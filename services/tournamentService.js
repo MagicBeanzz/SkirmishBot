@@ -278,24 +278,23 @@ async function considerAdvanceOrFinish(client, tournamentId) {
   tournament.state = BRACKET_STATES.COMPLETE;
   await tournament.save();
 
-  // Compute payout: entries * tier.cost * (1 - 0.20)
+  // Compute prize points: entries * tier.cost (no rake for points)
   const tier = TIERS.find((t) => t.key === tournament.tierKey);
   const cost = tier ? tier.cost : 1;
-  const payout = tournament.size * cost * 0.8; // dollars
+  const prizePoints = tournament.size * cost; // Winner gets total entry fees as points
 
   const winnerProfile = await Profile.findOne({
     serverId: tournament.serverId,
     userId: finalMatch.winnerId,
   });
   if (winnerProfile) {
-    winnerProfile.winningsBalance =
-      (winnerProfile.winningsBalance ?? 0) + payout;
+    winnerProfile.points = (winnerProfile.points ?? 0) + prizePoints;
     await winnerProfile.save();
   }
 
   // Record tournament win in stats
   const { recordTournamentWin } = require("./statsService");
-  await recordTournamentWin(tournament.serverId, finalMatch.winnerId, payout);
+  await recordTournamentWin(tournament.serverId, finalMatch.winnerId, prizePoints);
 
   // Refresh leaderboard
   const { refreshLeaderboard } = require("../components/leaderboardPanel");
@@ -308,7 +307,7 @@ async function considerAdvanceOrFinish(client, tournamentId) {
     await hub.send(
       `🏆 **Tournament complete!** Winner: <@${
         finalMatch.winnerId
-      }> — **$${payout.toFixed(2)}** added to winnings.`
+      }> — **${prizePoints}** prize points earned! 🎁`
     );
   } catch {}
 

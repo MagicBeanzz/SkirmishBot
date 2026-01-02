@@ -455,15 +455,15 @@ async function considerAdvanceOrFinish(client, tournamentId) {
     return;
   }
 
-  // Calculate total payout
+  // Calculate total prize points (no rake for points)
   const tier = TIERS.find((t) => t.key === tournament.tierKey);
   const cost = tier ? tier.cost : 1;
-  const totalPayout = tournament.size * cost * 0.8;
+  const totalPrizePoints = tournament.size * cost;
 
-  // Split prize money 50/50 between teammates
-  const prizePerPlayer = totalPayout / 2;
+  // Split prize points 50/50 between teammates
+  const pointsPerPlayer = totalPrizePoints / 2;
 
-  // Award prize to both players
+  // Award prize points to both players
   for (const playerId of winningTeam.players) {
     const playerProfile = await Profile.findOne({
       serverId: tournament.serverId,
@@ -471,13 +471,12 @@ async function considerAdvanceOrFinish(client, tournamentId) {
     });
 
     if (playerProfile) {
-      playerProfile.winningsBalance =
-        (playerProfile.winningsBalance ?? 0) + prizePerPlayer;
+      playerProfile.points = (playerProfile.points ?? 0) + pointsPerPlayer;
       await playerProfile.save();
     }
 
     // Record tournament win in stats for both players
-    await recordTournamentWin(tournament.serverId, playerId, prizePerPlayer);
+    await recordTournamentWin(tournament.serverId, playerId, pointsPerPlayer);
   }
 
   const { refreshLeaderboard } = require("../components/leaderboardPanel");
@@ -495,9 +494,9 @@ async function considerAdvanceOrFinish(client, tournamentId) {
       `🏆 **2v2 Tournament Complete!**\n\n` +
         `**Winning Team:** ${winningTeam.teamName}\n` +
         `**Players:** ${player1Mention} & ${player2Mention}\n\n` +
-        `**Prize Pool:** $${totalPayout.toFixed(2)}\n` +
-        `**Each Player Receives:** $${prizePerPlayer.toFixed(2)}\n\n` +
-        `Congratulations! 🎉`
+        `**Prize Points:** ${totalPrizePoints} 🎁\n` +
+        `**Each Player Receives:** ${pointsPerPlayer} points\n\n` +
+        `Congratulations! Use your points in /prizes to redeem awesome prizes! 🎉`
     );
   } catch (err) {
     console.error("Failed to announce 2v2 winner:", err);

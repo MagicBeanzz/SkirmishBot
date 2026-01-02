@@ -87,7 +87,7 @@ app.post(
                     }
                   )
                   .setFooter({
-                    text: "Use /balance to verify your tickets",
+                    text: "Win tournaments to earn prize points • Redeem prizes at /prizes",
                   })
                   .setTimestamp(new Date());
 

@@ -4,7 +4,7 @@ const Profile = require("../models/profileSchema");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("checkbalance")
-    .setDescription("Admin only: Check a user's tickets and winnings balance.")
+    .setDescription("Admin only: Check a user's tickets and prize points.")
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .addUserOption((opt) =>
       opt.setName("user").setDescription("User to check").setRequired(true)
@@ -28,7 +28,7 @@ module.exports = {
       return interaction.editReply(
         `💳 **${user.tag}'s Balance**\n` +
           `• 🎟️ Tickets: **${profile.balance ?? 0}**\n` +
-          `• 💵 Winnings: **$${(profile.winningsBalance ?? 0).toFixed(2)}**`
+          `• 🎁 Prize Points: **${profile.points ?? 0}**`
       );
     } catch (err) {
       console.error("checkbalance command error:", err);

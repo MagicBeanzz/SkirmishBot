@@ -27,7 +27,7 @@ module.exports = {
             userId,
             serverId,
             balance: 10,
-            winningsBalance: 0,
+            points: 0,
           });
         } catch (e) {
           // unique race tolerable
@@ -59,6 +59,38 @@ module.exports = {
       // Handle payout request modal
       if (interaction.customId === "PAYOUT_REQUEST_MODAL") {
         await handlePayoutModal(interaction);
+        return;
+      }
+
+      // Handle prize redemption shipping modal
+      if (interaction.customId.startsWith("SHIPPING_MODAL_")) {
+        const { redeemPrize } = require("../services/prizeService");
+        const prizeId = interaction.customId.replace("SHIPPING_MODAL_", "");
+
+        const shippingInfo = {
+          fullName: interaction.fields.getTextInputValue("fullName"),
+          addressLine1: interaction.fields.getTextInputValue("addressLine1"),
+          addressLine2:
+            interaction.fields.getTextInputValue("addressLine2") || null,
+          city: interaction.fields.getTextInputValue("city"),
+          state: interaction.fields.getTextInputValue("state"),
+          zipCode: interaction.fields.getTextInputValue("zipCode"),
+          country: "USA",
+          phone: interaction.fields.getTextInputValue("phone") || null,
+        };
+
+        const result = await redeemPrize(
+          interaction.user.id,
+          interaction.guild.id,
+          prizeId,
+          shippingInfo
+        );
+
+        await interaction.reply({
+          content: result.msg,
+          ephemeral: true,
+        });
+
         return;
       }
       return;
@@ -702,9 +734,132 @@ module.exports = {
         return interaction.editReply("Panel refreshed.");
       }
 
+      // Prize catalog - Redeem button
+      if (interaction.customId.startsWith("redeem_")) {
+        const {
+          ModalBuilder,
+          TextInputBuilder,
+          TextInputStyle,
+          ActionRowBuilder,
+        } = require("discord.js");
+
+        const prizeId = interaction.customId.replace("redeem_", "");
+
+        const modal = new ModalBuilder()
+          .setCustomId(`SHIPPING_MODAL_${prizeId}`)
+          .setTitle("Shipping Information");
+
+        const fullName = new TextInputBuilder()
+          .setCustomId("fullName")
+          .setLabel("Full Name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100);
+
+        const addressLine1 = new TextInputBuilder()
+          .setCustomId("addressLine1")
+          .setLabel("Address Line 1")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(200);
+
+        const addressLine2 = new TextInputBuilder()
+          .setCustomId("addressLine2")
+          .setLabel("Address Line 2 (Optional)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(200);
+
+        const city = new TextInputBuilder()
+          .setCustomId("city")
+          .setLabel("City")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100);
+
+        const stateZip = new TextInputBuilder()
+          .setCustomId("state")
+          .setLabel("State")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder("e.g., CA")
+          .setMaxLength(2)
+          .setMinLength(2);
+
+        const zipCode = new TextInputBuilder()
+          .setCustomId("zipCode")
+          .setLabel("ZIP Code")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(10);
+
+        const phone = new TextInputBuilder()
+          .setCustomId("phone")
+          .setLabel("Phone Number (Optional)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setPlaceholder("123-456-7890")
+          .setMaxLength(20);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(fullName),
+          new ActionRowBuilder().addComponents(addressLine1),
+          new ActionRowBuilder().addComponents(city),
+          new ActionRowBuilder().addComponents(stateZip),
+          new ActionRowBuilder().addComponents(zipCode)
+        );
+
+        await interaction.showModal(modal);
+        return;
+      }
+
       // Payout button
       if (interaction.customId === "REQUEST_PAYOUT") {
         return handlePayoutButton(interaction);
+      }
+    }
+
+    // String select menus
+    if (interaction.isStringSelectMenu()) {
+      // Prize category selector
+      if (interaction.customId === "prize_category") {
+        const { getPrizes } = require("../services/prizeService");
+        const {
+          buildCatalogEmbed,
+          buildPaginationButtons,
+          buildCategorySelectMenu,
+        } = require("../components/prizeCatalog");
+
+        await interaction.deferUpdate();
+
+        const category = interaction.values[0];
+        const filterCategory = category === "all" ? null : category;
+
+        const result = await getPrizes({
+          category: filterCategory,
+          page: 0,
+          limit: 5,
+        });
+
+        const embed = buildCatalogEmbed(
+          result.prizes,
+          result.page,
+          result.totalPages,
+          category
+        );
+        const pagination = buildPaginationButtons(
+          result.page,
+          result.totalPages,
+          result.hasMore
+        );
+        const categoryMenu = buildCategorySelectMenu();
+
+        await interaction.editReply({
+          embeds: [embed],
+          components: [categoryMenu, pagination],
+        });
+
+        return;
       }
     }
   },
