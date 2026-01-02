@@ -813,6 +813,153 @@ module.exports = {
         return;
       }
 
+      // Prize catalog - View Prize button
+      if (interaction.customId.startsWith("view_prize_")) {
+        const { getPrizeById } = require("../services/prizeService");
+        const {
+          buildPrizeDetailEmbed,
+          buildRedeemButton,
+        } = require("../components/catalogPanel");
+        const Profile = require("../models/profileSchema");
+
+        const prizeId = interaction.customId.replace("view_prize_", "");
+
+        const prize = await getPrizeById(prizeId);
+        if (!prize) {
+          return interaction.reply({
+            content: "❌ Prize not found.",
+            ephemeral: true,
+          });
+        }
+
+        const profile = await Profile.findOne({
+          userId: interaction.user.id,
+          serverId: interaction.guild.id,
+        });
+        const userPoints = profile ? profile.points : 0;
+
+        const embed = buildPrizeDetailEmbed(prize, userPoints);
+        const canRedeem =
+          prize.active &&
+          prize.stock > 0 &&
+          profile &&
+          profile.points >= prize.pointCost;
+        const redeemButton = buildRedeemButton(prize._id, canRedeem);
+
+        return interaction.reply({
+          embeds: [embed],
+          components: [redeemButton],
+          ephemeral: true,
+        });
+      }
+
+      // Catalog - My Points button
+      if (interaction.customId === "catalog_my_points") {
+        const Profile = require("../models/profileSchema");
+
+        const profile = await Profile.findOne({
+          userId: interaction.user.id,
+          serverId: interaction.guild.id,
+        });
+
+        if (!profile) {
+          return interaction.reply({
+            content:
+              "❌ Profile not found. Join a tournament first to create your profile!",
+            ephemeral: true,
+          });
+        }
+
+        return interaction.reply({
+          content:
+            `💰 **Your Balance**\n\n` +
+            `🎟️ **Tickets:** ${profile.balance ?? 0}\n` +
+            `🎁 **Prize Points:** ${profile.points ?? 0}\n\n` +
+            `Win tournaments to earn more points!`,
+          ephemeral: true,
+        });
+      }
+
+      // Catalog - My Redemptions button
+      if (interaction.customId === "catalog_redemptions") {
+        const { getUserRedemptions } = require("../services/prizeService");
+        const Profile = require("../models/profileSchema");
+
+        const profile = await Profile.findOne({
+          userId: interaction.user.id,
+          serverId: interaction.guild.id,
+        });
+
+        if (!profile) {
+          return interaction.reply({
+            content: "❌ Profile not found.",
+            ephemeral: true,
+          });
+        }
+
+        const redemptions = await getUserRedemptions(
+          interaction.user.id,
+          interaction.guild.id,
+          10
+        );
+
+        const statusEmoji = {
+          pending: "⏳",
+          approved: "✅",
+          shipped: "📦",
+          delivered: "🎉",
+          cancelled: "❌",
+        };
+
+        let msg = `📦 **Your Redemptions**\n\n`;
+
+        if (redemptions.length === 0) {
+          msg += `You haven't redeemed any prizes yet.\nYou have **${profile.points}** points available!`;
+        } else {
+          redemptions.forEach((r) => {
+            msg +=
+              `${statusEmoji[r.status]} **${r.prizeName}**\n` +
+              `   Points: ${r.pointCost} • Status: ${r.status}\n` +
+              `   Redeemed: <t:${Math.floor(r.createdAt.getTime() / 1000)}:R>\n`;
+            if (r.trackingNumber) {
+              msg += `   Tracking: \`${r.trackingNumber}\`\n`;
+            }
+            msg += `\n`;
+          });
+        }
+
+        return interaction.reply({
+          content: msg,
+          ephemeral: true,
+        });
+      }
+
+      // Catalog - Refresh button
+      if (interaction.customId === "catalog_refresh") {
+        const { upsertCatalogPanel } = require("../components/catalogPanel");
+
+        await interaction.deferUpdate();
+        await upsertCatalogPanel(interaction.client, "all", 0);
+
+        return interaction.followUp({
+          content: "✅ Catalog refreshed!",
+          ephemeral: true,
+        });
+      }
+
+      // Catalog - Pagination buttons
+      if (interaction.customId.startsWith("catalog_page_")) {
+        const { upsertCatalogPanel } = require("../components/catalogPanel");
+
+        const pageStr = interaction.customId.replace("catalog_page_", "");
+        const page = parseInt(pageStr);
+
+        if (isNaN(page)) return;
+
+        await interaction.deferUpdate();
+        await upsertCatalogPanel(interaction.client, "all", page);
+      }
+
       // Payout button
       if (interaction.customId === "REQUEST_PAYOUT") {
         return handlePayoutButton(interaction);
@@ -821,7 +968,32 @@ module.exports = {
 
     // String select menus
     if (interaction.isStringSelectMenu()) {
-      // Prize category selector
+      // Catalog category selector
+      if (interaction.customId === "catalog_category") {
+        const { upsertCatalogPanel } = require("../components/catalogPanel");
+
+        await interaction.deferUpdate();
+
+        const category = interaction.values[0];
+
+        if (category === "featured") {
+          // Show featured prizes
+          const { getPrizes } = require("../services/prizeService");
+          const result = await getPrizes({
+            featured: true,
+            page: 0,
+            limit: 6,
+          });
+
+          await upsertCatalogPanel(interaction.client, "featured", 0);
+        } else {
+          await upsertCatalogPanel(interaction.client, category, 0);
+        }
+
+        return;
+      }
+
+      // Prize category selector (old slash command system - keep for compatibility)
       if (interaction.customId === "prize_category") {
         const { getPrizes } = require("../services/prizeService");
         const {

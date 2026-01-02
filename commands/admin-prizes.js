@@ -189,6 +189,11 @@ module.exports = {
             .setDescription("Cancellation reason")
             .setRequired(false)
         )
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("refresh-catalog")
+        .setDescription("Refresh the catalog panel display")
     ),
 
   async execute(interaction) {
@@ -213,13 +218,18 @@ module.exports = {
 
       const prize = await Prize.create(prizeData);
 
+      // Refresh catalog panel
+      const { upsertCatalogPanel } = require("../components/catalogPanel");
+      await upsertCatalogPanel(interaction.client, "all", 0);
+
       return interaction.editReply(
         `✅ Prize added successfully!\n\n` +
           `**${prize.name}**\n` +
           `ID: \`${prize._id}\`\n` +
           `Points: ${prize.pointCost}\n` +
           `Stock: ${prize.stock}\n` +
-          `Category: ${prize.category}`
+          `Category: ${prize.category}\n\n` +
+          `The catalog panel has been updated.`
       );
     }
 
@@ -384,6 +394,16 @@ module.exports = {
           `Prize: **${result.redemption.prizeName}**\n` +
           `User: <@${result.redemption.userId}>\n` +
           `Points refunded: **${result.redemption.pointCost}**`
+      );
+    }
+
+    if (sub === "refresh-catalog") {
+      const { upsertCatalogPanel } = require("../components/catalogPanel");
+
+      await upsertCatalogPanel(interaction.client, "all", 0);
+
+      return interaction.editReply(
+        "✅ Catalog panel refreshed successfully!"
       );
     }
   },

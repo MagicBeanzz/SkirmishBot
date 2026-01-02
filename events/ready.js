@@ -8,6 +8,7 @@ const {
   ensureTicketPurchasePanel,
 } = require("../components/ticketPurchasePanel");
 const { ensureLeaderboardPanel } = require("../components/leaderboardPanel");
+const { upsertCatalogPanel } = require("../components/catalogPanel");
 const QueueEntry = require("../models/QueueEntry");
 const QueueState = require("../models/QueueState");
 const scheduler = require("../jobs/queueScheduler");
@@ -60,6 +61,12 @@ module.exports = {
     try {
       await ensureLeaderboardPanel(client); // leaderboard panel
     } catch {}
+
+    try {
+      await upsertCatalogPanel(client, "all", 0); // prize catalog panel
+    } catch (err) {
+      console.error("Failed to setup catalog panel:", err);
+    }
 
     // 3) Start the scheduler heartbeats
     scheduler.start(client); // 1v1 queue scheduler
