@@ -1,0 +1,13 @@
+module.exports = {
+  BRACKET_STATES: {
+    PENDING: "PENDING",
+    ACTIVE: "ACTIVE",
+    COMPLETE: "COMPLETE",
+  },
+  MATCH_STATES: {
+    PENDING: "PENDING",
+    ACTIVE: "ACTIVE",
+    REPORTED: "REPORTED",
+    COMPLETE: "COMPLETE",
+  },
+};
