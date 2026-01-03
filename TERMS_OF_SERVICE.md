@@ -252,7 +252,7 @@ You and SkirmishBot agree that any dispute, claim, or controversy arising out of
 ### 11.2 Arbitration Rules
 - Arbitration shall be administered by the American Arbitration Association (AAA)
 - Arbitration shall be conducted under the AAA's Consumer Arbitration Rules
-- Arbitration shall take place in Delaware
+- Arbitration shall take place in Illinois
 - The arbitrator's decision shall be final and binding
 
 ### 11.3 Class Action Waiver
@@ -264,7 +264,7 @@ You waive any right to:
 - Participate in a representative action
 
 ### 11.4 Governing Law
-These Terms shall be governed by and construed in accordance with the laws of the **State of Delaware**, without regard to its conflict of law provisions.
+These Terms shall be governed by and construed in accordance with the laws of the **State of Illinois**, without regard to its conflict of law provisions.
 
 ---
 
