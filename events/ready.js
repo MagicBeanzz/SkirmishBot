@@ -9,6 +9,7 @@ const {
 } = require("../components/ticketPurchasePanel");
 const { ensureLeaderboardPanel } = require("../components/leaderboardPanel");
 const { upsertCatalogPanel } = require("../components/catalogPanel");
+const { upsertToSPanel } = require("../components/tosPanel");
 const QueueEntry = require("../models/QueueEntry");
 const QueueState = require("../models/QueueState");
 const scheduler = require("../jobs/queueScheduler");
@@ -66,6 +67,12 @@ module.exports = {
       await upsertCatalogPanel(client, "all", 0); // prize catalog panel
     } catch (err) {
       console.error("Failed to setup catalog panel:", err);
+    }
+
+    try {
+      await upsertToSPanel(client); // ToS acceptance panel
+    } catch (err) {
+      console.error("Failed to setup ToS panel:", err);
     }
 
     // 3) Start the scheduler heartbeats

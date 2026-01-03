@@ -960,6 +960,12 @@ module.exports = {
         await upsertCatalogPanel(interaction.client, "all", page);
       }
 
+      // ToS Acceptance button
+      if (interaction.customId === "accept_tos") {
+        const { handleToSAcceptance } = require("../components/tosPanel");
+        return await handleToSAcceptance(interaction);
+      }
+
       // Payout button
       if (interaction.customId === "REQUEST_PAYOUT") {
         return handlePayoutButton(interaction);
