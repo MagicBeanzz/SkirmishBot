@@ -647,6 +647,14 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       await profile.save();
     }
 
+    // Log match result
+    try {
+      const { logMatchmakingResult } = require("./matchLogger");
+      await logMatchmakingResult(client, match, winnerId, tier);
+    } catch (err) {
+      console.error("Error logging matchmaking result:", err);
+    }
+
     // Send completion message
     const guild = client.guilds.cache.get(match.serverId);
     const channel = await guild.channels.fetch(match.channelId);

@@ -482,6 +482,14 @@ async function considerAdvanceOrFinish(client, tournamentId) {
   const { refreshLeaderboard } = require("../components/leaderboardPanel");
   await refreshLeaderboard(client);
 
+  // Log tournament result
+  try {
+    const { log2v2TournamentResult } = require("./matchLogger");
+    await log2v2TournamentResult(client, tournament, winningTeam, totalPayout);
+  } catch (err) {
+    console.error("Error logging 2v2 tournament result:", err);
+  }
+
   // Announce with team name and both players
   try {
     const guild = await client.guilds.fetch(tournament.serverId);

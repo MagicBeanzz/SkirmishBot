@@ -300,6 +300,14 @@ async function considerAdvanceOrFinish(client, tournamentId) {
   const { refreshLeaderboard } = require("../components/leaderboardPanel");
   await refreshLeaderboard(client);
 
+  // Log tournament result
+  try {
+    const { logTournamentResult } = require("./matchLogger");
+    await logTournamentResult(client, tournament, finalMatch.winnerId, payout);
+  } catch (err) {
+    console.error("Error logging tournament result:", err);
+  }
+
   // Announce and refresh bracket
   try {
     const guild = await client.guilds.fetch(tournament.serverId);
