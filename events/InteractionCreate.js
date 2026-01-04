@@ -106,7 +106,7 @@ module.exports = {
       // Handle challenge creation modal
       if (interaction.customId === "CHALLENGE_MODAL") {
         try {
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: 64 }); // 64 = ephemeral
 
           const opponentInput = interaction.fields.getTextInputValue("opponent").trim();
           const tierInput = interaction.fields.getTextInputValue("tier").trim().toUpperCase();
@@ -118,16 +118,25 @@ module.exports = {
           if (/^\d+$/.test(opponentInput)) {
             opponentId = opponentInput;
           } else {
-            // Try to find by username in the guild
+            // Try to find by username - search by query instead of fetching all
             try {
-              const members = await interaction.guild.members.fetch();
+              const members = await interaction.guild.members.fetch({
+                query: opponentInput,
+                limit: 10,
+              });
+
+              // Try exact match first
               const found = members.find(
                 (m) =>
                   m.user.username.toLowerCase() === opponentInput.toLowerCase() ||
                   m.displayName.toLowerCase() === opponentInput.toLowerCase()
               );
+
               if (found) {
                 opponentId = found.user.id;
+              } else if (members.size > 0) {
+                // If no exact match, use first result
+                opponentId = members.first().user.id;
               }
             } catch (err) {
               console.error("Error finding opponent:", err);
