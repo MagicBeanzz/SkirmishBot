@@ -206,16 +206,10 @@ async function createMatch(client, serverId, tierKey, player1Id, player2Id) {
     match.channelId = channel.id;
     await match.save();
 
-    // Send match info and start pick/ban
-    await sendPickBanMessage(client, match);
-
-    // Notify players
-    await channel.send(
-      `🎮 **${tier.label} Matchmaking Match**\n\n` +
-        `<@${player1Id}> vs <@${player2Id}>\n\n` +
-        `💰 Prize: **$${tier.prize.toFixed(2)}**\n\n` +
-        `Starting map pick/ban phase...`
-    );
+    // Send initial pick/ban message
+    const pickBanMessage = await sendInitialPickBanMessage(client, match);
+    match.pickBanState.messageId = pickBanMessage.id;
+    await match.save();
 
     return match;
   } catch (err) {
@@ -227,68 +221,94 @@ async function createMatch(client, serverId, tierKey, player1Id, player2Id) {
 /* ------------------------------ Pick/Ban System ----------------------------- */
 
 /**
- * Send or update pick/ban message
+ * Create pick/ban embed
  */
-async function sendPickBanMessage(client, match) {
+function createPickBanEmbed(match, tier) {
+  const { bannedMaps, currentAction } = match.pickBanState;
+  const availableMaps = VALORANT_MAPS.filter((m) => !bannedMaps.includes(m));
+
+  let description = `🎮 **${tier.label} Matchmaking Match**\n\n`;
+  description += `<@${match.player1Id}> vs <@${match.player2Id}>\n`;
+  description += `💰 Prize: **$${tier.prize.toFixed(2)}**\n\n`;
+  description += `**Available Maps:**\n`;
+  availableMaps.forEach((map) => {
+    description += `• ${map}\n`;
+  });
+
+  if (bannedMaps.length > 0) {
+    description += `\n**Banned Maps:**\n`;
+    bannedMaps.forEach((map) => {
+      description += `~~${map}~~\n`;
+    });
+  }
+
+  description += `\n`;
+  if (currentAction === "p1_ban") {
+    description += `🎯 <@${match.player1Id}>'s turn to ban a map`;
+  } else if (currentAction === "p2_ban") {
+    description += `🎯 <@${match.player2Id}>'s turn to ban a map`;
+  } else if (currentAction === "p1_pick") {
+    description += `🎯 <@${match.player1Id}>'s turn to pick the map`;
+  }
+
+  return new EmbedBuilder()
+    .setTitle("🗺️ Map Pick/Ban Phase")
+    .setDescription(description)
+    .setColor(0x5865f2)
+    .addFields(
+      { name: "Player 1", value: `<@${match.player1Id}>`, inline: true },
+      { name: "Player 2", value: `<@${match.player2Id}>`, inline: true }
+    );
+}
+
+/**
+ * Create map ban/pick buttons
+ */
+function createMapButtons(match) {
+  const { bannedMaps } = match.pickBanState;
+  const availableMaps = VALORANT_MAPS.filter((m) => !bannedMaps.includes(m));
+
+  const buttons = availableMaps.map((map) =>
+    new ButtonBuilder()
+      .setCustomId(`MM_MAP_${match._id}_${map.replace(/\s/g, "_")}`)
+      .setLabel(map)
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  if (buttons.length === 0) return [];
+
+  return [new ActionRowBuilder().addComponents(buttons)];
+}
+
+/**
+ * Send initial pick/ban message
+ */
+async function sendInitialPickBanMessage(client, match) {
   try {
     const guild = client.guilds.cache.get(match.serverId);
     const channel = await guild.channels.fetch(match.channelId);
+    const tier = MATCHMAKING_TIERS.find((t) => t.key === match.tierKey);
 
-    const { bannedMaps, currentAction } = match.pickBanState;
-    const availableMaps = VALORANT_MAPS.filter((m) => !bannedMaps.includes(m));
+    const embed = createPickBanEmbed(match, tier);
+    const buttons = createMapButtons(match);
 
-    let description = `**Map Pick/Ban Phase**\n\n`;
-    description += `Banned: ${bannedMaps.length > 0 ? bannedMaps.join(", ") : "None"}\n\n`;
-
-    if (currentAction === "p1_ban") {
-      description += `<@${match.player1Id}> - Ban a map`;
-    } else if (currentAction === "p2_ban") {
-      description += `<@${match.player2Id}> - Ban a map`;
-    } else if (currentAction === "p1_pick") {
-      description += `<@${match.player1Id}> - Pick the map`;
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle("🗺️ Map Selection")
-      .setDescription(description)
-      .setColor(0x5865f2)
-      .setTimestamp();
-
-    // Create map buttons
-    const rows = [];
-    let currentRow = new ActionRowBuilder();
-
-    availableMaps.forEach((map, index) => {
-      if (index > 0 && index % 5 === 0) {
-        rows.push(currentRow);
-        currentRow = new ActionRowBuilder();
-      }
-
-      currentRow.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`mm_map_${match._id}_${map}`)
-          .setLabel(map)
-          .setStyle(ButtonStyle.Danger)
-      );
-    });
-
-    if (currentRow.components.length > 0) {
-      rows.push(currentRow);
-    }
-
-    await channel.send({
+    const message = await channel.send({
       embeds: [embed],
-      components: rows,
+      components: buttons,
     });
+
+    return message;
   } catch (err) {
-    console.error("Error sending pick/ban message:", err);
+    console.error("Error sending initial pick/ban message:", err);
+    throw err;
   }
 }
 
 /**
  * Handle map selection (ban or pick)
+ * Uses interaction.update() to edit the original message instead of creating new ones
  */
-async function handleMapSelection(client, matchId, map, userId) {
+async function handleMapSelection(client, matchId, map, userId, interaction) {
   try {
     const match = await MatchmakingMatch.findById(matchId);
     if (!match) {
@@ -296,6 +316,7 @@ async function handleMapSelection(client, matchId, map, userId) {
     }
 
     const { currentAction, bannedMaps } = match.pickBanState;
+    const tier = MATCHMAKING_TIERS.find((t) => t.key === match.tierKey);
 
     // Verify it's the correct player's turn
     if (
@@ -306,6 +327,15 @@ async function handleMapSelection(client, matchId, map, userId) {
     }
     if (currentAction === "p2_ban" && userId !== match.player2Id) {
       return { success: false, message: "❌ It's not your turn!" };
+    }
+
+    // Check if map is valid
+    if (!VALORANT_MAPS.includes(map)) {
+      return { success: false, message: "❌ Invalid map selection." };
+    }
+
+    if (bannedMaps.includes(map)) {
+      return { success: false, message: "❌ This map has already been banned." };
     }
 
     // Handle action
@@ -321,8 +351,14 @@ async function handleMapSelection(client, matchId, map, userId) {
 
       await match.save();
 
-      // Send next pick/ban message
-      await sendPickBanMessage(client, match);
+      // Update the message with new pick/ban state
+      const embed = createPickBanEmbed(match, tier);
+      const buttons = createMapButtons(match);
+
+      await interaction.update({
+        embeds: [embed],
+        components: buttons,
+      });
 
       return {
         success: true,
@@ -334,24 +370,43 @@ async function handleMapSelection(client, matchId, map, userId) {
       match.status = "playing";
       await match.save();
 
-      // Send match start message
+      // Update message to show final selection
       const guild = client.guilds.cache.get(match.serverId);
-      const channel = await guild.channels.fetch(match.channelId);
-
       const p1Name = await safeDisplayName(guild, match.player1Id);
       const p2Name = await safeDisplayName(guild, match.player2Id);
 
-      const embed = new EmbedBuilder()
+      const finalEmbed = new EmbedBuilder()
+        .setTitle("✅ Map Selected!")
+        .setDescription(
+          `The match will be played on **${map}**\n\n` +
+            `Good luck to both players!`
+        )
+        .setColor(0x57f287)
+        .addFields(
+          { name: "Player 1", value: `<@${match.player1Id}>`, inline: true },
+          { name: "Player 2", value: `<@${match.player2Id}>`, inline: true },
+          { name: "Map", value: map, inline: true }
+        );
+
+      await interaction.update({
+        embeds: [finalEmbed],
+        components: [],
+      });
+
+      // Send match reporting message
+      const channel = await guild.channels.fetch(match.channelId);
+
+      const reportEmbed = new EmbedBuilder()
         .setTitle("🎮 Match Starting!")
         .setDescription(
           `**Map:** ${map}\n\n` +
             `<@${match.player1Id}> vs <@${match.player2Id}>\n\n` +
             `Good luck! Report the match result when finished using the buttons below.`
         )
-        .setColor(0x57f287)
+        .setColor(0x5865f2)
         .setTimestamp();
 
-      const buttons = new ActionRowBuilder().addComponents(
+      const reportButtons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player1Id}`)
           .setLabel(`${p1Name} Won`)
@@ -363,8 +418,9 @@ async function handleMapSelection(client, matchId, map, userId) {
       );
 
       await channel.send({
-        embeds: [embed],
-        components: [buttons],
+        content: "\n**🎮 Play your match now!**",
+        embeds: [reportEmbed],
+        components: [reportButtons],
       });
 
       return {

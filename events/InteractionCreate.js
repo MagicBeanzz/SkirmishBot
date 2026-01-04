@@ -771,18 +771,33 @@ module.exports = {
       }
 
       // Matchmaking map selection
-      if (interaction.customId.startsWith("mm_map_")) {
-        await interaction.deferReply({ ephemeral: true });
+      if (interaction.customId.startsWith("MM_MAP_")) {
+        const mapName = interaction.customId
+          .replace("MM_MAP_", "")
+          .split("_")
+          .slice(1)
+          .join("_")
+          .replace(/_/g, " ");
+
         const parts = interaction.customId.split("_");
         const matchId = parts[2];
-        const map = parts.slice(3).join("_");
+
         const result = await handleMapSelection(
           interaction.client,
           matchId,
-          map,
-          userId
+          mapName,
+          userId,
+          interaction
         );
-        return interaction.editReply(result.message);
+
+        // Only reply ephemerally if there was an error (interaction.update already called on success)
+        if (!result.success) {
+          return interaction.reply({
+            ephemeral: true,
+            content: result.message,
+          });
+        }
+        return;
       }
 
       // Matchmaking match reporting

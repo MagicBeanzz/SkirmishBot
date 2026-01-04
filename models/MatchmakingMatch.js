@@ -16,6 +16,7 @@ const MatchmakingMatchSchema = new Schema(
       bannedMaps: { type: [String], default: [] },
       selectedMap: { type: String, default: null },
       currentAction: { type: String, default: "p1_ban" }, // "p1_ban" | "p2_ban" | "p1_pick"
+      messageId: { type: String, default: null }, // ID of pick/ban message to update
     },
     // Match results
     winnerId: { type: String },
