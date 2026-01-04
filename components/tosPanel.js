@@ -17,7 +17,7 @@ function buildToSEmbed() {
     .setTitle("📜 SkirmishBot Terms of Service")
     .setDescription(
       "**Welcome to SkirmishBot!**\n\n" +
-        "Before you can participate in tournaments and access our services, you must read and accept our Terms of Service.\n\n" +
+        "Before you can participate in matches and access our service, you must read and accept our Terms of Service.\n\n" +
         "**By clicking Accept below, you agree to:**\n" +
         "✅ You are at least **18 years of age**\n" +
         "✅ You have verified participation is **legal in your jurisdiction**\n" +
