@@ -15,6 +15,8 @@ const {
   leaveMatchmaking,
   handleMapSelection,
   reportMatchResult,
+  confirmMatchResult,
+  disputeMatchResult,
 } = require("../services/matchmakingService");
 const { refreshMatchmakingPanel } = require("../components/matchmakingPanel");
 
@@ -784,26 +786,65 @@ module.exports = {
       }
 
       // Matchmaking match reporting
-      if (interaction.customId.startsWith("mm_report_")) {
+      if (interaction.customId.startsWith("MM_REPORT_WIN_")) {
         await interaction.deferReply({ ephemeral: true });
         const parts = interaction.customId.split("_");
-        const matchId = parts[2];
-        const winner = parts[3]; // "p1" or "p2"
+        const matchId = parts[3];
+        const winnerId = parts[4];
 
-        const MatchmakingMatch = require("../models/MatchmakingMatch");
-        const match = await MatchmakingMatch.findById(matchId);
-
-        if (!match) {
-          return interaction.editReply("❌ Match not found.");
-        }
-
-        const winnerId = winner === "p1" ? match.player1Id : match.player2Id;
         const result = await reportMatchResult(
+          interaction.client,
+          matchId,
+          winnerId,
+          userId,
+          interaction
+        );
+        return interaction.editReply(result.message);
+      }
+
+      // Matchmaking match confirmation
+      if (interaction.customId.startsWith("MM_CONFIRM_WIN_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const parts = interaction.customId.split("_");
+        const matchId = parts[3];
+        const winnerId = parts[4];
+
+        const result = await confirmMatchResult(
           interaction.client,
           matchId,
           winnerId,
           userId
         );
+
+        // Update the message to show completion
+        if (result.success) {
+          await interaction.message.edit({
+            components: [],
+          });
+        }
+
+        return interaction.editReply(result.message);
+      }
+
+      // Matchmaking match dispute
+      if (interaction.customId.startsWith("MM_DISPUTE_WIN_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const parts = interaction.customId.split("_");
+        const matchId = parts[3];
+
+        const result = await disputeMatchResult(
+          interaction.client,
+          matchId,
+          userId
+        );
+
+        // Update the message to remove buttons
+        if (result.success) {
+          await interaction.message.edit({
+            components: [],
+          });
+        }
+
         return interaction.editReply(result.message);
       }
 

@@ -5,19 +5,7 @@ const Profile = require("../models/profileSchema");
 const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
 
 const MATCHMAKING_CATEGORY_ID = process.env.MATCHMAKING_CATEGORY_ID;
-const VALORANT_MAPS = [
-  "Bind",
-  "Haven",
-  "Split",
-  "Ascent",
-  "Icebox",
-  "Breeze",
-  "Fracture",
-  "Pearl",
-  "Lotus",
-  "Sunset",
-  "Abyss",
-];
+const VALORANT_MAPS = ["Skirmish A", "Skirmish B", "Skirmish C"];
 
 /* ------------------------------ Helpers ---------------------------------- */
 
@@ -337,6 +325,9 @@ async function handleMapSelection(client, matchId, map, userId) {
       const guild = client.guilds.cache.get(match.serverId);
       const channel = await guild.channels.fetch(match.channelId);
 
+      const p1Name = await safeDisplayName(guild, match.player1Id);
+      const p2Name = await safeDisplayName(guild, match.player2Id);
+
       const embed = new EmbedBuilder()
         .setTitle("🎮 Match Starting!")
         .setDescription(
@@ -349,12 +340,12 @@ async function handleMapSelection(client, matchId, map, userId) {
 
       const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setCustomId(`mm_report_${match._id}_p1`)
-          .setLabel("Player 1 Won")
+          .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player1Id}`)
+          .setLabel(`${p1Name} Won`)
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
-          .setCustomId(`mm_report_${match._id}_p2`)
-          .setLabel("Player 2 Won")
+          .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player2Id}`)
+          .setLabel(`${p2Name} Won`)
           .setStyle(ButtonStyle.Success)
       );
 
@@ -377,20 +368,21 @@ async function handleMapSelection(client, matchId, map, userId) {
 /* ------------------------------ Match Reporting ----------------------------- */
 
 /**
- * Report match result and award prize
+ * Report match result (requires confirmation from opponent)
  */
-async function reportMatchResult(client, matchId, winnerId, reporterId) {
+async function reportMatchResult(client, matchId, winnerId, reporterId, interaction) {
   try {
+    const MatchmakingReport = require("../models/MatchmakingReport");
+
     const match = await MatchmakingMatch.findById(matchId);
     if (!match) {
       return { success: false, message: "❌ Match not found." };
     }
 
-    if (match.status === "completed") {
+    if (match.winnerId) {
       return { success: false, message: "❌ This match has already been completed." };
     }
 
-    // For now, allow either player to report (in production, you'd want both to confirm)
     if (reporterId !== match.player1Id && reporterId !== match.player2Id) {
       return { success: false, message: "❌ You're not part of this match." };
     }
@@ -398,6 +390,104 @@ async function reportMatchResult(client, matchId, winnerId, reporterId) {
     if (winnerId !== match.player1Id && winnerId !== match.player2Id) {
       return { success: false, message: "❌ Invalid winner." };
     }
+
+    // Check if report already exists
+    let report = await MatchmakingReport.findOne({ matchId: matchId.toString() });
+
+    if (report && report.reportedWinnerId) {
+      return {
+        success: false,
+        message: "❌ A result has already been reported for this match. Waiting for confirmation.",
+      };
+    }
+
+    // Create or update report
+    if (!report) {
+      report = await MatchmakingReport.create({
+        matchId: matchId.toString(),
+        reportedWinnerId: winnerId,
+        reportedBy: reporterId,
+      });
+    } else {
+      report.reportedWinnerId = winnerId;
+      report.reportedBy = reporterId;
+      await report.save();
+    }
+
+    // Determine loser for confirmation message
+    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+
+    // Update the message with confirmation buttons
+    const embed = new EmbedBuilder()
+      .setTitle("⏳ Win Report Pending Confirmation")
+      .setDescription(
+        `<@${reporterId}> reported that <@${winnerId}> won.\n\n` +
+          `Waiting for confirmation from <@${loserId}>...`
+      )
+      .setColor(0xfee75c)
+      .setFooter({ text: "The opponent must confirm or dispute this result" });
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`MM_CONFIRM_WIN_${matchId}_${winnerId}`)
+        .setLabel("Confirm Result")
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`MM_DISPUTE_WIN_${matchId}`)
+        .setLabel("Dispute Result")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    // Update the original message with confirmation interface
+    await interaction.message.edit({
+      embeds: [embed],
+      components: [buttons],
+    });
+
+    return {
+      success: true,
+      message: `✅ Result reported. Waiting for <@${loserId}> to confirm.`,
+    };
+  } catch (err) {
+    console.error("Error reporting match result:", err);
+    return { success: false, message: "❌ An error occurred." };
+  }
+}
+
+/**
+ * Confirm match result and award prize
+ */
+async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
+  try {
+    const MatchmakingReport = require("../models/MatchmakingReport");
+
+    const match = await MatchmakingMatch.findById(matchId);
+    if (!match) {
+      return { success: false, message: "❌ Match not found." };
+    }
+
+    const report = await MatchmakingReport.findOne({ matchId: matchId.toString() });
+    if (!report || !report.reportedWinnerId) {
+      return { success: false, message: "❌ No report to confirm." };
+    }
+
+    if (confirmerId === report.reportedBy) {
+      return {
+        success: false,
+        message: "❌ You cannot confirm your own report. Wait for your opponent to confirm.",
+      };
+    }
+
+    if (![match.player1Id, match.player2Id].includes(confirmerId)) {
+      return {
+        success: false,
+        message: "❌ Only participants in this match can confirm the result.",
+      };
+    }
+
+    // Mark report as confirmed
+    report.confirmed = true;
+    await report.save();
 
     // Update match
     match.winnerId = winnerId;
@@ -421,14 +511,17 @@ async function reportMatchResult(client, matchId, winnerId, reporterId) {
     const guild = client.guilds.cache.get(match.serverId);
     const channel = await guild.channels.fetch(match.channelId);
 
+    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+
     const embed = new EmbedBuilder()
       .setTitle("🏆 Match Complete!")
       .setDescription(
-        `**Winner:** <@${winnerId}>\n\n` +
+        `**Winner:** <@${winnerId}>\n` +
+          `**Opponent:** <@${loserId}>\n\n` +
           `💰 **$${tier.prize.toFixed(2)}** has been added to winner's balance!\n\n` +
           `This channel will be archived shortly.`
       )
-      .setColor(0xffd700)
+      .setColor(0x57f287)
       .setTimestamp();
 
     await channel.send({ embeds: [embed], components: [] });
@@ -447,7 +540,80 @@ async function reportMatchResult(client, matchId, winnerId, reporterId) {
       message: `✅ Match completed! <@${winnerId}> wins $${tier.prize.toFixed(2)}!`,
     };
   } catch (err) {
-    console.error("Error reporting match result:", err);
+    console.error("Error confirming match result:", err);
+    return { success: false, message: "❌ An error occurred." };
+  }
+}
+
+/**
+ * Dispute match result
+ */
+async function disputeMatchResult(client, matchId, disputerId) {
+  try {
+    const MatchmakingReport = require("../models/MatchmakingReport");
+
+    const match = await MatchmakingMatch.findById(matchId);
+    if (!match) {
+      return { success: false, message: "❌ Match not found." };
+    }
+
+    const report = await MatchmakingReport.findOne({ matchId: matchId.toString() });
+    if (!report || !report.reportedWinnerId) {
+      return { success: false, message: "❌ No report to dispute." };
+    }
+
+    if (![match.player1Id, match.player2Id].includes(disputerId)) {
+      return {
+        success: false,
+        message: "❌ Only participants in this match can dispute the result.",
+      };
+    }
+
+    // Mark as disputed
+    report.disputed = true;
+    report.reportedWinnerId = null;
+    report.reportedBy = null;
+    await report.save();
+
+    // Send dispute message
+    const guild = client.guilds.cache.get(match.serverId);
+    const channel = await guild.channels.fetch(match.channelId);
+
+    const embed = new EmbedBuilder()
+      .setTitle("⚠️ Result Disputed")
+      .setDescription(
+        `<@${disputerId}> disputed the match result.\n\n` +
+          `Please discuss with your opponent and report the correct result, or contact an admin if you cannot agree.`
+      )
+      .setColor(0xed4245)
+      .setTimestamp();
+
+    // Re-add the original report buttons
+    const p1Name = await safeDisplayName(guild, match.player1Id);
+    const p2Name = await safeDisplayName(guild, match.player2Id);
+
+    const buttons = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player1Id}`)
+        .setLabel(`${p1Name} Won`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player2Id}`)
+        .setLabel(`${p2Name} Won`)
+        .setStyle(ButtonStyle.Success)
+    );
+
+    await channel.send({
+      embeds: [embed],
+      components: [buttons],
+    });
+
+    return {
+      success: true,
+      message: "✅ Result disputed. Please report the correct result.",
+    };
+  } catch (err) {
+    console.error("Error disputing match result:", err);
     return { success: false, message: "❌ An error occurred." };
   }
 }
@@ -457,4 +623,6 @@ module.exports = {
   leaveMatchmaking,
   handleMapSelection,
   reportMatchResult,
+  confirmMatchResult,
+  disputeMatchResult,
 };
