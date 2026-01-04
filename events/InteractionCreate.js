@@ -843,7 +843,6 @@ module.exports = {
 
       // Matchmaking match dispute
       if (interaction.customId.startsWith("MM_DISPUTE_WIN_")) {
-        await interaction.deferReply({ ephemeral: true });
         const parts = interaction.customId.split("_");
         const matchId = parts[3];
 
@@ -853,14 +852,28 @@ module.exports = {
           userId
         );
 
-        // Update the message to remove buttons
-        if (result.success) {
-          await interaction.message.edit({
-            components: [],
+        if (!result.success) {
+          return interaction.reply({
+            ephemeral: true,
+            content: result.message,
           });
         }
 
-        return interaction.editReply(result.message);
+        // Update the message to show dispute status
+        await interaction.update({
+          embeds: [
+            {
+              title: "⚠️ Result Disputed",
+              description:
+                `<@${userId}> has disputed the match result.\n\n` +
+                `An admin will review this match. Please wait for resolution.`,
+              color: 0xed4245,
+            },
+          ],
+          components: [],
+        });
+
+        return;
       }
 
       // Prize catalog - Redeem button

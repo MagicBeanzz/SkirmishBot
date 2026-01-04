@@ -343,6 +343,77 @@ async function handleMapSelection(client, matchId, map, userId, interaction) {
       // Ban the map
       match.pickBanState.bannedMaps.push(map);
 
+      // Check if we've banned 2 maps (only 1 remains) - auto-select it
+      if (match.pickBanState.bannedMaps.length === 2) {
+        const remainingMap = VALORANT_MAPS.find(
+          (m) => !match.pickBanState.bannedMaps.includes(m)
+        );
+
+        // Auto-select the final map
+        match.pickBanState.selectedMap = remainingMap;
+        match.status = "playing";
+        await match.save();
+
+        // Update message to show final selection
+        const guild = client.guilds.cache.get(match.serverId);
+        const p1Name = await safeDisplayName(guild, match.player1Id);
+        const p2Name = await safeDisplayName(guild, match.player2Id);
+
+        const finalEmbed = new EmbedBuilder()
+          .setTitle("✅ Map Selected!")
+          .setDescription(
+            `The match will be played on **${remainingMap}**\n\n` +
+              `Good luck to both players!`
+          )
+          .setColor(0x57f287)
+          .addFields(
+            { name: "Player 1", value: `<@${match.player1Id}>`, inline: true },
+            { name: "Player 2", value: `<@${match.player2Id}>`, inline: true },
+            { name: "Map", value: remainingMap, inline: true }
+          );
+
+        await interaction.update({
+          embeds: [finalEmbed],
+          components: [],
+        });
+
+        // Send match reporting message
+        const channel = await guild.channels.fetch(match.channelId);
+
+        const reportEmbed = new EmbedBuilder()
+          .setTitle("🎮 Match Starting!")
+          .setDescription(
+            `**Map:** ${remainingMap}\n\n` +
+              `<@${match.player1Id}> vs <@${match.player2Id}>\n\n` +
+              `Good luck! Report the match result when finished using the buttons below.`
+          )
+          .setColor(0x5865f2)
+          .setTimestamp();
+
+        const reportButtons = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player1Id}`)
+            .setLabel(`${p1Name} Won`)
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player2Id}`)
+            .setLabel(`${p2Name} Won`)
+            .setStyle(ButtonStyle.Success)
+        );
+
+        await channel.send({
+          content: "\n**🎮 Play your match now!**",
+          embeds: [reportEmbed],
+          components: [reportButtons],
+        });
+
+        return {
+          success: true,
+          message: `✅ **${remainingMap}** has been auto-selected! Match is starting...`,
+        };
+      }
+
+      // Still need more bans
       if (currentAction === "p1_ban") {
         match.pickBanState.currentAction = "p2_ban";
       } else {
@@ -615,7 +686,7 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
 }
 
 /**
- * Dispute match result
+ * Dispute match result - requires admin intervention
  */
 async function disputeMatchResult(client, matchId, disputerId) {
   try {
@@ -640,46 +711,11 @@ async function disputeMatchResult(client, matchId, disputerId) {
 
     // Mark as disputed
     report.disputed = true;
-    report.reportedWinnerId = null;
-    report.reportedBy = null;
     await report.save();
-
-    // Send dispute message
-    const guild = client.guilds.cache.get(match.serverId);
-    const channel = await guild.channels.fetch(match.channelId);
-
-    const embed = new EmbedBuilder()
-      .setTitle("⚠️ Result Disputed")
-      .setDescription(
-        `<@${disputerId}> disputed the match result.\n\n` +
-          `Please discuss with your opponent and report the correct result, or contact an admin if you cannot agree.`
-      )
-      .setColor(0xed4245)
-      .setTimestamp();
-
-    // Re-add the original report buttons
-    const p1Name = await safeDisplayName(guild, match.player1Id);
-    const p2Name = await safeDisplayName(guild, match.player2Id);
-
-    const buttons = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player1Id}`)
-        .setLabel(`${p1Name} Won`)
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`MM_REPORT_WIN_${match._id}_${match.player2Id}`)
-        .setLabel(`${p2Name} Won`)
-        .setStyle(ButtonStyle.Success)
-    );
-
-    await channel.send({
-      embeds: [embed],
-      components: [buttons],
-    });
 
     return {
       success: true,
-      message: "✅ Result disputed. Please report the correct result.",
+      message: "✅ Result disputed. An admin will review this match.",
     };
   } catch (err) {
     console.error("Error disputing match result:", err);
