@@ -27,7 +27,7 @@ async function logMatchmakingResult(client, match, winnerId, tier) {
         { name: "Tier", value: tier.label, inline: true },
         { name: "Prize", value: `$${tier.prize.toFixed(2)}`, inline: true },
         { name: "Map", value: match.pickBanState.selectedMap || "Unknown", inline: true },
-        { name: "Completed", value: `<t:${Math.floor(match.completedAt.getTime() / 1000)}:R>`, inline: true }
+        { name: "Match ID", value: `\`${match._id.toString()}\``, inline: true }
       )
       .setTimestamp();
 
@@ -61,7 +61,7 @@ async function logTournamentResult(client, tournament, winnerId, payout) {
         { name: "Tier", value: tierName, inline: true },
         { name: "Players", value: `${tournament.size}`, inline: true },
         { name: "Prize", value: `$${payout.toFixed(2)}`, inline: true },
-        { name: "Completed", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
+        { name: "Tournament ID", value: `\`${tournament._id.toString()}\``, inline: true }
       )
       .setTimestamp();
 
@@ -100,7 +100,7 @@ async function log2v2TournamentResult(client, tournament, winningTeam, totalPayo
         { name: "Teams", value: `${tournament.size / 2}`, inline: true },
         { name: "Total Prize", value: `$${totalPayout.toFixed(2)}`, inline: true },
         { name: "Per Player", value: `$${payoutPerPlayer.toFixed(2)}`, inline: true },
-        { name: "Completed", value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true }
+        { name: "Tournament ID", value: `\`${tournament._id.toString()}\``, inline: true }
       )
       .setTimestamp();
 
