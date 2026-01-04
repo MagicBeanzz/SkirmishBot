@@ -105,6 +105,15 @@ module.exports = {
           winnerProfile.winningsBalance = (winnerProfile.winningsBalance || 0) + tier.prize;
           await winnerProfile.save();
         }
+
+        // Record match stats
+        try {
+          const { recordMatchResult, recordMatchmakingWin } = require("../services/statsService");
+          await recordMatchResult(serverId, winnerId, loserId);
+          await recordMatchmakingWin(serverId, winnerId, tier.prize);
+        } catch (err) {
+          console.error("Error recording forfeit match stats:", err);
+        }
       }
 
       // Delete match channel

@@ -647,6 +647,16 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       await profile.save();
     }
 
+    // Record match stats
+    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+    try {
+      const { recordMatchResult, recordMatchmakingWin } = require("./statsService");
+      await recordMatchResult(match.serverId, winnerId, loserId);
+      await recordMatchmakingWin(match.serverId, winnerId, tier.prize);
+    } catch (err) {
+      console.error("Error recording match stats:", err);
+    }
+
     // Log match result
     try {
       const { logMatchmakingResult } = require("./matchLogger");
