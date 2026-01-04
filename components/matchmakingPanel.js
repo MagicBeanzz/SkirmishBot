@@ -42,6 +42,23 @@ function buildTierButtons() {
   );
   rows.push(utilRow);
 
+  // External info links
+  const linkRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel("📜 Rules")
+      .setStyle(ButtonStyle.Link)
+      .setURL(
+        "https://discord.com/channels/1427022339362783242/1427035861362409602"
+      ),
+    new ButtonBuilder()
+      .setLabel("💵 How Payouts Work")
+      .setStyle(ButtonStyle.Link)
+      .setURL(
+        "https://discord.com/channels/1427022339362783242/1429134493750395051"
+      )
+  );
+  rows.push(linkRow);
+
   return rows;
 }
 
