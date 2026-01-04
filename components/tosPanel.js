@@ -28,7 +28,7 @@ function buildToSEmbed() {
         "✅ You accept the service **AS IS** without warranties\n\n" +
         "**IMPORTANT:** Residents of AZ, HI, IA, MS, MT, NV, and SD are **PROHIBITED** from cash prize tournaments.\n\n" +
         "**Please read the full Terms of Service carefully:**\n" +
-        "[View Full Terms of Service](https://github.com/YOUR_REPO/blob/main/TERMS_OF_SERVICE.md)"
+        "[View Full Terms of Service](https://github.com/MagicBeanzz/Valorant-Skirmish-Underground-ToS/blob/main/TERMS_OF_SERVICE.md)"
     )
     .setColor(0x5865f2)
     .setFooter({
@@ -87,7 +87,10 @@ async function upsertToSPanel(client) {
     }
 
     // Create new panel if no existing one found
-    const message = await channel.send({ embeds: [embed], components: [button] });
+    const message = await channel.send({
+      embeds: [embed],
+      components: [button],
+    });
     tosMessageId = message.id;
     console.log(`✅ ToS panel created: ${message.id}`);
   } catch (err) {
@@ -104,7 +107,9 @@ async function handleToSAcceptance(interaction) {
     const member = interaction.member;
 
     // Find or create "ToS Accepted" role
-    let tosRole = guild.roles.cache.find((r) => r.name === TOS_ACCEPTED_ROLE_NAME);
+    let tosRole = guild.roles.cache.find(
+      (r) => r.name === TOS_ACCEPTED_ROLE_NAME
+    );
 
     if (!tosRole) {
       // Create the role if it doesn't exist
