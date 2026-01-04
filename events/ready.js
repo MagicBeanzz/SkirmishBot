@@ -10,6 +10,7 @@ const {
 const { ensureLeaderboardPanel } = require("../components/leaderboardPanel");
 const { upsertCatalogPanel } = require("../components/catalogPanel");
 const { upsertToSPanel } = require("../components/tosPanel");
+const { ensureMatchmakingPanel } = require("../components/matchmakingPanel");
 const QueueEntry = require("../models/QueueEntry");
 const QueueState = require("../models/QueueState");
 const scheduler = require("../jobs/queueScheduler");
@@ -73,6 +74,12 @@ module.exports = {
       await upsertToSPanel(client); // ToS acceptance panel
     } catch (err) {
       console.error("Failed to setup ToS panel:", err);
+    }
+
+    try {
+      await ensureMatchmakingPanel(client); // 1v1 matchmaking panel
+    } catch (err) {
+      console.error("Failed to setup matchmaking panel:", err);
     }
 
     // 3) Start the scheduler heartbeats

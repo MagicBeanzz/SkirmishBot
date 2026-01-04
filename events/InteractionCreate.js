@@ -10,6 +10,13 @@ const {
   handlePayoutButton,
   handlePayoutModal,
 } = require("../Components/payoutPanel");
+const {
+  joinMatchmaking,
+  leaveMatchmaking,
+  handleMapSelection,
+  reportMatchResult,
+} = require("../services/matchmakingService");
+const { refreshMatchmakingPanel } = require("../components/matchmakingPanel");
 
 module.exports = {
   name: "interactionCreate",
@@ -27,7 +34,7 @@ module.exports = {
             userId,
             serverId,
             balance: 10,
-            points: 0,
+            winningsBalance: 0,
           });
         } catch (e) {
           // unique race tolerable
@@ -734,6 +741,72 @@ module.exports = {
         return interaction.editReply("Panel refreshed.");
       }
 
+      // Matchmaking buttons
+      if (interaction.customId.startsWith("MM_JOIN_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const tierKey = interaction.customId.replace("MM_JOIN_", "");
+        const result = await joinMatchmaking(
+          interaction.client,
+          serverId,
+          userId,
+          tierKey
+        );
+        await refreshMatchmakingPanel(interaction.client);
+        return interaction.editReply(result.message);
+      }
+
+      if (interaction.customId === "MM_LEAVE_QUEUE") {
+        await interaction.deferReply({ ephemeral: true });
+        const result = await leaveMatchmaking(serverId, userId);
+        await refreshMatchmakingPanel(interaction.client);
+        return interaction.editReply(result.message);
+      }
+
+      if (interaction.customId === "MM_REFRESH_PANEL") {
+        await interaction.deferReply({ ephemeral: true });
+        await refreshMatchmakingPanel(interaction.client);
+        return interaction.editReply("✅ Matchmaking panel refreshed.");
+      }
+
+      // Matchmaking map selection
+      if (interaction.customId.startsWith("mm_map_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const parts = interaction.customId.split("_");
+        const matchId = parts[2];
+        const map = parts.slice(3).join("_");
+        const result = await handleMapSelection(
+          interaction.client,
+          matchId,
+          map,
+          userId
+        );
+        return interaction.editReply(result.message);
+      }
+
+      // Matchmaking match reporting
+      if (interaction.customId.startsWith("mm_report_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const parts = interaction.customId.split("_");
+        const matchId = parts[2];
+        const winner = parts[3]; // "p1" or "p2"
+
+        const MatchmakingMatch = require("../models/MatchmakingMatch");
+        const match = await MatchmakingMatch.findById(matchId);
+
+        if (!match) {
+          return interaction.editReply("❌ Match not found.");
+        }
+
+        const winnerId = winner === "p1" ? match.player1Id : match.player2Id;
+        const result = await reportMatchResult(
+          interaction.client,
+          matchId,
+          winnerId,
+          userId
+        );
+        return interaction.editReply(result.message);
+      }
+
       // Prize catalog - Redeem button
       if (interaction.customId.startsWith("redeem_")) {
         const {
@@ -836,14 +909,14 @@ module.exports = {
           userId: interaction.user.id,
           serverId: interaction.guild.id,
         });
-        const userPoints = profile ? profile.points : 0;
+        const userPoints = profile ? profile.winningsBalance : 0;
 
         const embed = buildPrizeDetailEmbed(prize, userPoints);
         const canRedeem =
           prize.active &&
           prize.stock > 0 &&
           profile &&
-          profile.points >= prize.pointCost;
+          profile.winningsBalance >= prize.pointCost;
         const redeemButton = buildRedeemButton(prize._id, canRedeem);
 
         return interaction.reply({
@@ -874,8 +947,8 @@ module.exports = {
           content:
             `💰 **Your Balance**\n\n` +
             `🎟️ **Tickets:** ${profile.balance ?? 0}\n` +
-            `🎁 **Prize Points:** ${profile.points ?? 0}\n\n` +
-            `Win tournaments to earn more points!`,
+            `💵 **Cash Winnings:** $${(profile.winningsBalance ?? 0).toFixed(2)}\n\n` +
+            `Win tournaments and matchmaking to earn cash!`,
           ephemeral: true,
         });
       }
@@ -914,7 +987,7 @@ module.exports = {
         let msg = `📦 **Your Redemptions**\n\n`;
 
         if (redemptions.length === 0) {
-          msg += `You haven't redeemed any prizes yet.\nYou have **${profile.points}** points available!`;
+          msg += `You haven't redeemed any prizes yet.\nYou have **$${(profile.winningsBalance ?? 0).toFixed(2)}** in cash winnings available!`;
         } else {
           redemptions.forEach((r) => {
             msg +=

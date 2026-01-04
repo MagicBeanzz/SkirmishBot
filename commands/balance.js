@@ -4,7 +4,7 @@ const Profile = require("../models/profileSchema");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("balance")
-    .setDescription("Check your current tickets and prize points."),
+    .setDescription("Check your current tickets and cash winnings."),
 
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
@@ -20,18 +20,18 @@ module.exports = {
           serverId,
           userId,
           balance: 10,
-          points: 0,
+          winningsBalance: 0,
         });
       }
 
       const balance = profile.balance ?? 0;
-      const points = profile.points ?? 0;
+      const winnings = profile.winningsBalance ?? 0;
 
       return interaction.editReply({
         content:
           `💳 **Your Balance**\n` +
-          `• 🎟️ Tickets: **${balance}** (for entering tournaments)\n` +
-          `• 🎁 Prize Points: **${points}** (redeem at /prizes)`,
+          `• 🎟️ Tickets: **${balance}** (for entering matches)\n` +
+          `• 💰 Winnings: **$${winnings.toFixed(2)}** (cash out anytime)`,
         ephemeral: true,
       });
     } catch (err) {
