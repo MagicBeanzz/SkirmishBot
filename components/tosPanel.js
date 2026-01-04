@@ -5,7 +5,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 
-const TOS_CHANNEL_ID = "YOUR_TOS_CHANNEL_ID"; // Replace with actual channel ID
+const TOS_CHANNEL_ID = "1456874575806726225"; // Replace with actual channel ID
 const TOS_ACCEPTED_ROLE_NAME = "ToS Accepted"; // Role to give upon acceptance
 let tosMessageId = null;
 
