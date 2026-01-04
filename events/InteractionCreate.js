@@ -105,60 +105,65 @@ module.exports = {
 
       // Handle challenge creation modal
       if (interaction.customId === "CHALLENGE_MODAL") {
-        await interaction.deferReply({ ephemeral: true });
+        try {
+          await interaction.deferReply({ ephemeral: true });
 
-        const opponentInput = interaction.fields.getTextInputValue("opponent").trim();
-        const tierInput = interaction.fields.getTextInputValue("tier").trim().toUpperCase();
+          const opponentInput = interaction.fields.getTextInputValue("opponent").trim();
+          const tierInput = interaction.fields.getTextInputValue("tier").trim().toUpperCase();
 
-        // Try to find the opponent user
-        let opponentId = null;
+          // Try to find the opponent user
+          let opponentId = null;
 
-        // Check if it's a user ID (numeric)
-        if (/^\d+$/.test(opponentInput)) {
-          opponentId = opponentInput;
-        } else {
-          // Try to find by username in the guild
-          try {
-            const members = await interaction.guild.members.fetch();
-            const found = members.find(
-              (m) =>
-                m.user.username.toLowerCase() === opponentInput.toLowerCase() ||
-                m.displayName.toLowerCase() === opponentInput.toLowerCase()
-            );
-            if (found) {
-              opponentId = found.user.id;
+          // Check if it's a user ID (numeric)
+          if (/^\d+$/.test(opponentInput)) {
+            opponentId = opponentInput;
+          } else {
+            // Try to find by username in the guild
+            try {
+              const members = await interaction.guild.members.fetch();
+              const found = members.find(
+                (m) =>
+                  m.user.username.toLowerCase() === opponentInput.toLowerCase() ||
+                  m.displayName.toLowerCase() === opponentInput.toLowerCase()
+              );
+              if (found) {
+                opponentId = found.user.id;
+              }
+            } catch (err) {
+              console.error("Error finding opponent:", err);
             }
-          } catch (err) {
-            console.error("Error finding opponent:", err);
           }
-        }
 
-        if (!opponentId) {
-          return interaction.editReply(
-            "❌ Could not find that user. Try using their user ID instead (right-click → Copy User ID)."
+          if (!opponentId) {
+            return interaction.editReply(
+              "❌ Could not find that user. Try using their user ID instead (right-click → Copy User ID)."
+            );
+          }
+
+          // Validate tier
+          const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
+          const tier = MATCHMAKING_TIERS.find((t) => t.key === tierInput);
+          if (!tier) {
+            return interaction.editReply(
+              `❌ Invalid tier. Valid tiers are: ${MATCHMAKING_TIERS.map((t) => t.key).join(", ")}`
+            );
+          }
+
+          // Create the challenge
+          const { createChallenge } = require("../services/challengeService");
+          const result = await createChallenge(
+            interaction.client,
+            interaction.guild.id,
+            interaction.user.id,
+            opponentId,
+            tierInput
           );
+
+          return interaction.editReply(result.message);
+        } catch (err) {
+          console.error("Error handling challenge modal:", err);
+          return interaction.editReply("❌ An error occurred while creating the challenge. Please try again.");
         }
-
-        // Validate tier
-        const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
-        const tier = MATCHMAKING_TIERS.find((t) => t.key === tierInput);
-        if (!tier) {
-          return interaction.editReply(
-            `❌ Invalid tier. Valid tiers are: ${MATCHMAKING_TIERS.map((t) => t.key).join(", ")}`
-          );
-        }
-
-        // Create the challenge
-        const { createChallenge } = require("../services/challengeService");
-        const result = await createChallenge(
-          interaction.client,
-          interaction.guild.id,
-          interaction.user.id,
-          opponentId,
-          tierInput
-        );
-
-        return interaction.editReply(result.message);
       }
 
       return;
