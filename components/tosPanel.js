@@ -65,19 +65,28 @@ async function upsertToSPanel(client) {
     const embed = buildToSEmbed();
     const button = buildAcceptButton();
 
-    // Try to update existing message
-    if (tosMessageId) {
-      try {
-        const message = await channel.messages.fetch(tosMessageId);
-        await message.edit({ embeds: [embed], components: [button] });
-        console.log("✅ ToS panel updated");
+    // Search for existing ToS panel message from the bot
+    try {
+      const messages = await channel.messages.fetch({ limit: 10 });
+      const existingPanel = messages.find(
+        (msg) =>
+          msg.author.id === client.user.id &&
+          msg.embeds.length > 0 &&
+          msg.embeds[0].title === "📜 SkirmishBot Terms of Service"
+      );
+
+      if (existingPanel) {
+        // Update existing message
+        await existingPanel.edit({ embeds: [embed], components: [button] });
+        tosMessageId = existingPanel.id;
+        console.log(`✅ ToS panel updated: ${existingPanel.id}`);
         return;
-      } catch (err) {
-        console.log("Previous ToS message not found, creating new one...");
       }
+    } catch (err) {
+      console.log("Could not fetch existing messages, creating new panel...");
     }
 
-    // Create new panel
+    // Create new panel if no existing one found
     const message = await channel.send({ embeds: [embed], components: [button] });
     tosMessageId = message.id;
     console.log(`✅ ToS panel created: ${message.id}`);
