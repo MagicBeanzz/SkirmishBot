@@ -669,8 +669,6 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
     const guild = client.guilds.cache.get(match.serverId);
     const channel = await guild.channels.fetch(match.channelId);
 
-    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
-
     const embed = new EmbedBuilder()
       .setTitle("🏆 Match Complete!")
       .setDescription(
