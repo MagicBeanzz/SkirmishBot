@@ -82,6 +82,13 @@ module.exports = {
       console.error("Failed to setup matchmaking panel:", err);
     }
 
+    try {
+      const { ensureChallengePanel } = require("../components/challengePanel");
+      await ensureChallengePanel(client); // challenge panel
+    } catch (err) {
+      console.error("Failed to setup challenge panel:", err);
+    }
+
     // 3) Start the scheduler heartbeats
     scheduler.start(client); // 1v1 queue scheduler
     scheduler2v2.start(client); // 2v2 queue scheduler

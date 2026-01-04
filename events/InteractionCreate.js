@@ -102,6 +102,65 @@ module.exports = {
 
         return;
       }
+
+      // Handle challenge creation modal
+      if (interaction.customId === "CHALLENGE_MODAL") {
+        await interaction.deferReply({ ephemeral: true });
+
+        const opponentInput = interaction.fields.getTextInputValue("opponent").trim();
+        const tierInput = interaction.fields.getTextInputValue("tier").trim().toUpperCase();
+
+        // Try to find the opponent user
+        let opponentId = null;
+
+        // Check if it's a user ID (numeric)
+        if (/^\d+$/.test(opponentInput)) {
+          opponentId = opponentInput;
+        } else {
+          // Try to find by username in the guild
+          try {
+            const members = await interaction.guild.members.fetch();
+            const found = members.find(
+              (m) =>
+                m.user.username.toLowerCase() === opponentInput.toLowerCase() ||
+                m.displayName.toLowerCase() === opponentInput.toLowerCase()
+            );
+            if (found) {
+              opponentId = found.user.id;
+            }
+          } catch (err) {
+            console.error("Error finding opponent:", err);
+          }
+        }
+
+        if (!opponentId) {
+          return interaction.editReply(
+            "❌ Could not find that user. Try using their user ID instead (right-click → Copy User ID)."
+          );
+        }
+
+        // Validate tier
+        const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
+        const tier = MATCHMAKING_TIERS.find((t) => t.key === tierInput);
+        if (!tier) {
+          return interaction.editReply(
+            `❌ Invalid tier. Valid tiers are: ${MATCHMAKING_TIERS.map((t) => t.key).join(", ")}`
+          );
+        }
+
+        // Create the challenge
+        const { createChallenge } = require("../services/challengeService");
+        const result = await createChallenge(
+          interaction.client,
+          interaction.guild.id,
+          interaction.user.id,
+          opponentId,
+          tierInput
+        );
+
+        return interaction.editReply(result.message);
+      }
+
       return;
     }
 
@@ -874,6 +933,73 @@ module.exports = {
         });
 
         return;
+      }
+
+      // Challenge system - Create challenge button
+      if (interaction.customId === "CHALLENGE_CREATE") {
+        const {
+          ModalBuilder,
+          TextInputBuilder,
+          TextInputStyle,
+          ActionRowBuilder,
+        } = require("discord.js");
+
+        const modal = new ModalBuilder()
+          .setCustomId("CHALLENGE_MODAL")
+          .setTitle("Challenge a Player");
+
+        const opponentInput = new TextInputBuilder()
+          .setCustomId("opponent")
+          .setLabel("Opponent Username or ID")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("Enter username or user ID")
+          .setRequired(true)
+          .setMaxLength(100);
+
+        const tierInput = new TextInputBuilder()
+          .setCustomId("tier")
+          .setLabel("Tier (MM5, MM10, MM20, or MM50)")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("Example: MM10")
+          .setRequired(true)
+          .setMaxLength(10);
+
+        modal.addComponents(
+          new ActionRowBuilder().addComponents(opponentInput),
+          new ActionRowBuilder().addComponents(tierInput)
+        );
+
+        return interaction.showModal(modal);
+      }
+
+      // Challenge system - Accept challenge
+      if (interaction.customId.startsWith("CHALLENGE_ACCEPT_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const challengeId = interaction.customId.replace("CHALLENGE_ACCEPT_", "");
+
+        const { acceptChallenge } = require("../services/challengeService");
+        const result = await acceptChallenge(
+          interaction.client,
+          challengeId,
+          userId
+        );
+
+        return interaction.editReply(result.message);
+      }
+
+      // Challenge system - Decline challenge
+      if (interaction.customId.startsWith("CHALLENGE_DECLINE_")) {
+        await interaction.deferReply({ ephemeral: true });
+        const challengeId = interaction.customId.replace("CHALLENGE_DECLINE_", "");
+
+        const { declineChallenge } = require("../services/challengeService");
+        const result = await declineChallenge(
+          interaction.client,
+          challengeId,
+          userId
+        );
+
+        return interaction.editReply(result.message);
       }
 
       // Prize catalog - Redeem button

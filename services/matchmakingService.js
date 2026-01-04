@@ -747,6 +747,20 @@ async function disputeMatchResult(client, matchId, disputerId) {
   }
 }
 
+/**
+ * Create a match from an accepted challenge
+ * This is a wrapper for createMatch specifically for the challenge system
+ */
+async function createMatchFromChallenge(client, serverId, player1Id, player2Id, tierKey) {
+  try {
+    const match = await createMatch(client, serverId, tierKey, player1Id, player2Id);
+    return { success: true, match };
+  } catch (err) {
+    console.error("Error creating match from challenge:", err);
+    return { success: false, message: "❌ Failed to create match." };
+  }
+}
+
 module.exports = {
   joinMatchmaking,
   leaveMatchmaking,
@@ -754,4 +768,5 @@ module.exports = {
   reportMatchResult,
   confirmMatchResult,
   disputeMatchResult,
+  createMatchFromChallenge,
 };
