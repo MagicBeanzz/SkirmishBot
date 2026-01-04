@@ -7,6 +7,20 @@ async function join2v2(serverId, userId, tierKey) {
   const tier = TIERS.find((t) => t.key === tierKey);
   if (!tier) return { ok: false, msg: "Unknown tier." };
 
+  // Block if the user is in an active matchmaking match
+  const MatchmakingMatch = require("../models/MatchmakingMatch");
+  const activeMatch = await MatchmakingMatch.findOne({
+    serverId,
+    $or: [{ player1Id: userId }, { player2Id: userId }],
+    status: { $in: ["pickban", "playing"] },
+  });
+  if (activeMatch) {
+    return {
+      ok: false,
+      msg: "You're currently in an active matchmaking match! Finish your current match before joining a new queue.",
+    };
+  }
+
   // Find user's team (or create solo team)
   let team = await Team.findOne({
     serverId,

@@ -4,7 +4,7 @@ const MatchmakingMatch = require("../models/MatchmakingMatch");
 const Profile = require("../models/profileSchema");
 const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
 
-const MATCHMAKING_CATEGORY_ID = process.env.MATCHMAKING_CATEGORY_ID;
+const MATCH_CATEGORY_ID = process.env.MATCH_CATEGORY_ID;
 const VALORANT_MAPS = ["Skirmish A", "Skirmish B", "Skirmish C"];
 
 /* ------------------------------ Helpers ---------------------------------- */
@@ -29,6 +29,19 @@ async function joinMatchmaking(client, serverId, userId, tierKey) {
     const tier = MATCHMAKING_TIERS.find((t) => t.key === tierKey);
     if (!tier) {
       return { success: false, message: "❌ Invalid tier selected." };
+    }
+
+    // Check if player is in an active match
+    const activeMatch = await MatchmakingMatch.findOne({
+      serverId,
+      $or: [{ player1Id: userId }, { player2Id: userId }],
+      status: { $in: ["pickban", "playing"] },
+    });
+    if (activeMatch) {
+      return {
+        success: false,
+        message: `❌ You're currently in an active match! Finish your current match before joining a new queue.`,
+      };
     }
 
     // Check if already in queue
@@ -165,7 +178,7 @@ async function createMatch(client, serverId, tierKey, player1Id, player2Id) {
     const channel = await guild.channels.create({
       name: `${tier.label}-${p1Name}-vs-${p2Name}`,
       type: ChannelType.GuildText,
-      parent: MATCHMAKING_CATEGORY_ID,
+      parent: MATCH_CATEGORY_ID,
       permissionOverwrites: [
         {
           id: guild.roles.everyone,
@@ -255,7 +268,7 @@ async function sendPickBanMessage(client, match) {
         new ButtonBuilder()
           .setCustomId(`mm_map_${match._id}_${map}`)
           .setLabel(map)
-          .setStyle(ButtonStyle.Primary)
+          .setStyle(ButtonStyle.Danger)
       );
     });
 

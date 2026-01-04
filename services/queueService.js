@@ -75,6 +75,20 @@ async function join(serverId, userId, tierKey) {
     };
   }
 
+  // Block if the user is in an active matchmaking match
+  const MatchmakingMatch = require("../models/MatchmakingMatch");
+  const activeMatch = await MatchmakingMatch.findOne({
+    serverId,
+    $or: [{ player1Id: userId }, { player2Id: userId }],
+    status: { $in: ["pickban", "playing"] },
+  });
+  if (activeMatch) {
+    return {
+      ok: false,
+      msg: "You're currently in an active matchmaking match! Finish your current match before joining a new queue.",
+    };
+  }
+
   // Ensure profile exists (do not charge here)
   let profile = await Profile.findOne({ serverId, userId });
   if (!profile) {
