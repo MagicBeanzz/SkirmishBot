@@ -665,6 +665,14 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       console.error("Error logging matchmaking result:", err);
     }
 
+    // Refresh leaderboard
+    try {
+      const { refreshLeaderboard } = require("../components/leaderboardPanel");
+      await refreshLeaderboard(client);
+    } catch (err) {
+      console.error("Error refreshing leaderboard:", err);
+    }
+
     // Send completion message
     const guild = client.guilds.cache.get(match.serverId);
     const channel = await guild.channels.fetch(match.channelId);
