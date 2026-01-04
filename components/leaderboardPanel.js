@@ -17,16 +17,16 @@ const medals = {
 async function buildLeaderboardEmbed(guild) {
   const serverId = guild.id;
 
-  // Get top 10 by wins
-  const topWins = await PlayerStats.find({ serverId })
-    .sort({ totalWins: -1 })
-    .limit(10)
+  // Get top 7 by weekly earnings
+  const topWeekly = await PlayerStats.find({ serverId })
+    .sort({ weeklyEarnings: -1 })
+    .limit(7)
     .lean();
 
-  // Get top 10 by earnings
+  // Get top 7 by lifetime earnings
   const topEarnings = await PlayerStats.find({ serverId })
     .sort({ lifetimeEarnings: -1 })
-    .limit(10)
+    .limit(7)
     .lean();
 
   // Build the embed
@@ -40,42 +40,39 @@ async function buildLeaderboardEmbed(guild) {
     .setColor(0xffd700) // Gold color
     .setTimestamp(new Date())
     .setFooter({
-      text: "🔥 Updated live • Compete to reach the top!",
+      text: "🔥 Updated live • Weekly stats reset every Monday",
     });
 
-  // Most Wins Field
-  if (topWins.length > 0) {
-    let winsText = "";
-    for (let i = 0; i < Math.min(10, topWins.length); i++) {
-      const stat = topWins[i];
+  // Top Weekly Winners Field
+  if (topWeekly.length > 0) {
+    let weeklyText = "";
+    for (let i = 0; i < Math.min(7, topWeekly.length); i++) {
+      const stat = topWeekly[i];
       const member = await guild.members.fetch(stat.userId).catch(() => null);
       const name = member
         ? member.displayName.slice(0, 20)
         : `User ${stat.userId.slice(0, 8)}`;
 
       const medal = medals[i + 1] || `\`${i + 1}.\``;
-      const winRate =
-        stat.totalMatches > 0
-          ? ((stat.totalWins / stat.totalMatches) * 100).toFixed(1)
-          : "0.0";
+      const weeklyEarnings = stat.weeklyEarnings || 0;
 
-      winsText += `${medal} **${name}**\n`;
-      winsText += `   └ ${stat.totalWins} wins • ${winRate}% WR`;
+      weeklyText += `${medal} **${name}**\n`;
+      weeklyText += `   └ $${weeklyEarnings.toFixed(2)} this week`;
       if (stat.currentStreak > 2) {
-        winsText += ` • 🔥${stat.currentStreak}`;
+        weeklyText += ` • 🔥${stat.currentStreak}`;
       }
-      winsText += "\n";
+      weeklyText += "\n";
     }
 
     embed.addFields({
-      name: "⚔️ **MOST WINS**",
-      value: winsText || "No data yet",
+      name: "📅 **TOP WEEKLY WINNERS**",
+      value: weeklyText || "No data yet",
       inline: false,
     });
   } else {
     embed.addFields({
-      name: "⚔️ **MOST WINS**",
-      value: "No players yet. Be the first to compete!",
+      name: "📅 **TOP WEEKLY WINNERS**",
+      value: "No winners yet this week. Be the first to compete!",
       inline: false,
     });
   }
@@ -90,7 +87,7 @@ async function buildLeaderboardEmbed(guild) {
   // Top Earners Field
   if (topEarnings.length > 0) {
     let earningsText = "";
-    for (let i = 0; i < Math.min(10, topEarnings.length); i++) {
+    for (let i = 0; i < Math.min(7, topEarnings.length); i++) {
       const stat = topEarnings[i];
       const member = await guild.members.fetch(stat.userId).catch(() => null);
       const name = member
@@ -98,12 +95,12 @@ async function buildLeaderboardEmbed(guild) {
         : `User ${stat.userId.slice(0, 8)}`;
 
       const medal = medals[i + 1] || `\`${i + 1}.\``;
-      const tournaments = stat.tournamentsWon || 0;
+      const totalWins = stat.totalWins || 0;
 
       earningsText += `${medal} **${name}**\n`;
       earningsText += `   └ $${stat.lifetimeEarnings.toFixed(
         2
-      )} earned • ${tournaments} 🏆\n`;
+      )} earned • ${totalWins} wins\n`;
     }
 
     embed.addFields({
