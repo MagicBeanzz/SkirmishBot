@@ -190,20 +190,28 @@ async function upsertCatalogPanel(client, category = "all", page = 0) {
 
     const panelData = await buildCatalogPanel(category, page);
 
-    // If we have a stored message ID, try to update it
-    if (catalogMessageId) {
-      try {
-        const message = await channel.messages.fetch(catalogMessageId);
-        await message.edit(panelData);
-        console.log("✅ Catalog panel updated");
+    // Search for existing catalog panel message from the bot
+    try {
+      const messages = await channel.messages.fetch({ limit: 10 });
+      const existingPanel = messages.find(
+        (msg) =>
+          msg.author.id === client.user.id &&
+          msg.embeds.length > 0 &&
+          msg.embeds[0].title?.includes("Prize Catalog")
+      );
+
+      if (existingPanel) {
+        // Update existing message
+        await existingPanel.edit(panelData);
+        catalogMessageId = existingPanel.id;
+        console.log(`✅ Catalog panel updated: ${existingPanel.id}`);
         return;
-      } catch (err) {
-        // Message doesn't exist, create new one
-        console.log("Previous catalog message not found, creating new one...");
       }
+    } catch (err) {
+      console.log("Could not fetch existing messages, creating new panel...");
     }
 
-    // Create new panel
+    // Create new panel if no existing one found
     const message = await channel.send(panelData);
     catalogMessageId = message.id;
     console.log(`✅ Catalog panel created: ${message.id}`);
