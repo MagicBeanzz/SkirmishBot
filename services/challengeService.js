@@ -4,7 +4,7 @@ const Profile = require("../models/profileSchema");
 const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
 const { createMatchFromChallenge } = require("./matchmakingService");
 
-const MATCHMAKING_CHANNEL_ID = "1457148385533362428";
+const CHALLENGE_CHANNEL_ID = "1457517486558941204";
 
 /**
  * Create a challenge from one player to another
@@ -130,7 +130,7 @@ async function createChallenge(client, serverId, challengerId, opponentId, tierK
 
     // Send notification message
     const guild = await client.guilds.fetch(serverId);
-    const channel = await guild.channels.fetch(MATCHMAKING_CHANNEL_ID);
+    const channel = await guild.channels.fetch(CHALLENGE_CHANNEL_ID);
 
     const embed = new EmbedBuilder()
       .setTitle("⚔️ Challenge Received!")
@@ -250,7 +250,7 @@ async function acceptChallenge(client, challengeId, accepterId) {
     // Delete the challenge notification message
     try {
       const guild = await client.guilds.fetch(challenge.serverId);
-      const channel = await guild.channels.fetch(MATCHMAKING_CHANNEL_ID);
+      const channel = await guild.channels.fetch(CHALLENGE_CHANNEL_ID);
       const message = await channel.messages.fetch(challenge.messageId);
       await message.delete();
     } catch (err) {
@@ -292,7 +292,7 @@ async function declineChallenge(client, challengeId, declinerId) {
     // Delete the challenge notification message
     try {
       const guild = await client.guilds.fetch(challenge.serverId);
-      const channel = await guild.channels.fetch(MATCHMAKING_CHANNEL_ID);
+      const channel = await guild.channels.fetch(CHALLENGE_CHANNEL_ID);
       const message = await channel.messages.fetch(challenge.messageId);
       await message.delete();
     } catch (err) {
@@ -302,7 +302,7 @@ async function declineChallenge(client, challengeId, declinerId) {
     // Notify challenger
     try {
       const guild = await client.guilds.fetch(challenge.serverId);
-      const channel = await guild.channels.fetch(MATCHMAKING_CHANNEL_ID);
+      const channel = await guild.channels.fetch(CHALLENGE_CHANNEL_ID);
       const notifyMsg = await channel.send(
         `<@${challenge.challengerId}>, your challenge to <@${challenge.opponentId}> was declined.`
       );

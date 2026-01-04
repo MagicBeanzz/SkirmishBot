@@ -5,7 +5,7 @@ const {
   EmbedBuilder,
 } = require("discord.js");
 
-const MATCHMAKING_CHANNEL_ID = "1457148385533362428";
+const CHALLENGE_CHANNEL_ID = "1457517486558941204";
 const PANEL_TITLE = "⚔️ Challenge a Friend";
 
 /**
@@ -58,7 +58,7 @@ function buildChallengePanel() {
  */
 async function ensureChallengePanel(client) {
   try {
-    const channel = await client.channels.fetch(MATCHMAKING_CHANNEL_ID);
+    const channel = await client.channels.fetch(CHALLENGE_CHANNEL_ID);
 
     if (!channel) {
       console.error("❌ Matchmaking channel not found!");
