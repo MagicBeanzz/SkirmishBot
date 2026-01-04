@@ -23,7 +23,7 @@ function buildTierButtons() {
     ...MATCHMAKING_TIERS.map((tier) =>
       new ButtonBuilder()
         .setCustomId(`MM_JOIN_${tier.key}`)
-        .setLabel(`${tier.label} ($${tier.prize})`)
+        .setLabel(`${tier.label} Queue`)
         .setStyle(ButtonStyle.Primary)
     )
   );
