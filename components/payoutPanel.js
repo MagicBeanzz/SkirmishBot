@@ -42,7 +42,7 @@ function buildEmbed() {
         "   • CashApp\n" +
         "   • Zelle\n\n" +
         "⏱️ **Processing Time:** Usually within 24-48 hours\n" +
-        "💵 **Minimum Cashout:** $5.00"
+        "💵 **Minimum Cashout:** $20.00"
     )
     .setColor(0x57f287)
     .setFooter({ text: "Win tournaments to earn cash prizes!" })
@@ -81,14 +81,14 @@ async function handlePayoutButton(interaction) {
   const profile = await Profile.findOne({ serverId, userId });
   const winnings = profile?.winningsBalance ?? 0;
 
-  if (winnings < 5) {
+  if (winnings < 20) {
     return interaction.reply({
       ephemeral: true,
       content:
         `💰 **Your Balance:**\n` +
         `• Winnings: **$${winnings.toFixed(2)}** 💵\n` +
         `• Tickets: **${profile?.balance ?? 0}** 🎟️\n\n` +
-        `❌ Minimum cashout is $5.00. Keep playing to earn more!`,
+        `❌ Minimum cashout is $20.00. Keep playing to earn more!`,
     });
   }
 
@@ -160,10 +160,10 @@ async function handlePayoutModal(interaction) {
     });
   }
 
-  if (requestedAmount < 5) {
+  if (requestedAmount < 20) {
     return interaction.reply({
       ephemeral: true,
-      content: "❌ Minimum payout is $5.00.",
+      content: "❌ Minimum payout is $20.00.",
     });
   }
 

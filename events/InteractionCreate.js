@@ -1035,7 +1035,8 @@ module.exports = {
           .setTitle("💰 Convert Winnings to Tickets")
           .setDescription(
             `**Your Winnings:** $${profile.winningsBalance.toFixed(2)}\n\n` +
-            `Select a bundle below to convert your winnings into tickets at the same rate as purchasing!\n\n` +
+            `Convert your winnings into tickets and get a **5% BONUS**! 🎁\n` +
+            `Same great rates as purchasing, plus extra tickets!\n\n` +
             `**Available Bundles:**`
           )
           .setColor(0xffd700);
@@ -1092,16 +1093,82 @@ module.exports = {
           );
         }
 
-        // Process conversion
+        // Process conversion with 5% bonus
+        const bonusTickets = Math.floor(bundle.tickets * 0.05);
+        const totalTickets = bundle.tickets + bonusTickets;
+
         profile.winningsBalance -= bundle.price;
-        profile.balance += bundle.tickets;
+        profile.balance += totalTickets;
         await profile.save();
 
         return interaction.editReply(
-          `✅ Successfully converted $${bundle.price.toFixed(2)} into **${bundle.tickets} tickets**!\n\n` +
+          `✅ Successfully converted $${bundle.price.toFixed(2)} into **${totalTickets} tickets**!\n\n` +
+          `Base: ${bundle.tickets} tickets\n` +
+          `Bonus (5%): +${bonusTickets} tickets 🎁\n\n` +
           `**New Winnings Balance:** $${profile.winningsBalance.toFixed(2)}\n` +
           `**New Ticket Balance:** ${profile.balance} tickets 🎫`
         );
+      }
+
+      // Daily Challenges - Check Progress
+      if (interaction.customId === "CHECK_DAILY_PROGRESS") {
+        const { getDailyChallengeProgress } = require("../services/challengeTracker");
+        const { generateDailyChallenges } = require("../components/dailyChallengesPanel");
+        const { EmbedBuilder } = require("discord.js");
+
+        const progress = await getDailyChallengeProgress(serverId, userId);
+        const challenges = generateDailyChallenges();
+
+        const embed = new EmbedBuilder()
+          .setTitle("📊 Your Daily Challenge Progress")
+          .setColor(0xff6b35)
+          .setDescription("Here's your progress on today's challenges:\n")
+          .addFields(
+            {
+              name: "🟢 Warm Up",
+              value:
+                `Progress: ${progress.matchesPlayed}/3 matches played\n` +
+                `Status: ${progress.easyClaimed ? "✅ Claimed" : progress.matchesPlayed >= 3 ? "🎁 Ready to claim!" : "⏳ In progress"}`,
+              inline: false,
+            },
+            {
+              name: "🟡 Step It Up",
+              value:
+                `Progress: ${progress.mm10PlusWins}/2 MM10+ wins\n` +
+                `Status: ${progress.mediumClaimed ? "✅ Claimed" : progress.mm10PlusWins >= 2 ? "🎁 Ready to claim!" : "⏳ In progress"}`,
+              inline: false,
+            },
+            {
+              name: "🔴 High Roller",
+              value:
+                `Progress: ${progress.mm20PlusWins}/3 MM20+ wins\n` +
+                `Status: ${progress.hardClaimed ? "✅ Claimed" : progress.mm20PlusWins >= 3 ? "🎁 Ready to claim!" : "⏳ In progress"}`,
+              inline: false,
+            },
+            {
+              name: "💎 Elite Champion",
+              value:
+                `Progress: ${progress.mm50Wins}/1 MM50 wins\n` +
+                `Status: ${progress.eliteClaimed ? "✅ Claimed" : progress.mm50Wins >= 1 ? "🎁 Ready to claim!" : "⏳ In progress"}`,
+              inline: false,
+            }
+          )
+          .setFooter({ text: "Click 'Claim Rewards' to collect your completed challenges!" });
+
+        return interaction.reply({
+          embeds: [embed],
+          flags: 64, // ephemeral
+        });
+      }
+
+      // Daily Challenges - Claim Rewards
+      if (interaction.customId === "CLAIM_DAILY_REWARDS") {
+        await interaction.deferReply({ flags: 64 }); // ephemeral
+
+        const { claimChallengeRewards } = require("../services/challengeTracker");
+        const result = await claimChallengeRewards(serverId, userId);
+
+        return interaction.editReply(result.message);
       }
 
       // Prize catalog - Redeem button
