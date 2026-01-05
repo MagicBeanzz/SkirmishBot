@@ -46,7 +46,7 @@ function ticketPurchaseButtons() {
     new ButtonBuilder()
       .setCustomId("CONVERT_WINNINGS_TO_TICKETS")
       .setLabel("💰 Convert Winnings to Tickets")
-      .setStyle(ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Success)
   );
   rows.push(convertRow);
 
