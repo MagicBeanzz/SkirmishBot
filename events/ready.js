@@ -89,13 +89,6 @@ module.exports = {
       console.error("Failed to setup challenge panel:", err);
     }
 
-    try {
-      const { ensureDailyChallengesPanel } = require("../components/dailyChallengesPanel");
-      await ensureDailyChallengesPanel(client); // daily challenges panel
-    } catch (err) {
-      console.error("Failed to setup daily challenges panel:", err);
-    }
-
     // 3) Start the scheduler heartbeats
     scheduler.start(client); // 1v1 queue scheduler
     scheduler2v2.start(client); // 2v2 queue scheduler
@@ -111,18 +104,6 @@ module.exports = {
         console.error("Leaderboard auto-refresh failed:", err);
       }
     }, 5 * 60 * 1000); // 5 minutes
-
-    // 5) Auto-refresh daily challenges panel every hour
-    setInterval(async () => {
-      try {
-        const {
-          refreshDailyChallengesPanel,
-        } = require("../components/dailyChallengesPanel");
-        await refreshDailyChallengesPanel(client);
-      } catch (err) {
-        console.error("Daily challenges auto-refresh failed:", err);
-      }
-    }, 60 * 60 * 1000); // 1 hour
 
     console.log("✅ All systems ready!");
   },

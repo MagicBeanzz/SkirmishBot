@@ -657,15 +657,6 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       console.error("Error recording match stats:", err);
     }
 
-    // Record for daily challenges
-    try {
-      const { recordMatchForChallenges } = require("./challengeTracker");
-      await recordMatchForChallenges(match.serverId, winnerId, match.tierKey, true);
-      await recordMatchForChallenges(match.serverId, loserId, match.tierKey, false);
-    } catch (err) {
-      console.error("Error recording challenge progress:", err);
-    }
-
     // Log match result
     try {
       const { logMatchmakingResult } = require("./matchLogger");
