@@ -1016,6 +1016,94 @@ module.exports = {
         return interaction.editReply(result.message);
       }
 
+      // Convert Winnings to Tickets - Show bundle selection
+      if (interaction.customId === "CONVERT_WINNINGS_TO_TICKETS") {
+        const Profile = require("../models/profileSchema");
+        const { TICKET_BUNDLES } = require("../config/ticketBundles");
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+
+        const profile = await Profile.findOne({ serverId, userId });
+
+        if (!profile || profile.winningsBalance <= 0) {
+          return interaction.reply({
+            content: "❌ You don't have any winnings to convert. Win some matches first!",
+            flags: 64, // ephemeral
+          });
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle("💰 Convert Winnings to Tickets")
+          .setDescription(
+            `**Your Winnings:** $${profile.winningsBalance.toFixed(2)}\n\n` +
+            `Select a bundle below to convert your winnings into tickets at the same rate as purchasing!\n\n` +
+            `**Available Bundles:**`
+          )
+          .setColor(0xffd700);
+
+        const rows = [];
+        let currentRow = [];
+
+        TICKET_BUNDLES.forEach((bundle, index) => {
+          const canAfford = profile.winningsBalance >= bundle.price;
+          const button = new ButtonBuilder()
+            .setCustomId(`CONVERT_BUNDLE_${bundle.id}`)
+            .setLabel(`${bundle.emoji} ${bundle.tickets} - $${bundle.price.toFixed(2)}`)
+            .setStyle(canAfford ? (bundle.popular ? ButtonStyle.Success : ButtonStyle.Primary) : ButtonStyle.Secondary)
+            .setDisabled(!canAfford);
+
+          currentRow.push(button);
+
+          // Add row every 3 buttons or at the end
+          if (currentRow.length === 3 || index === TICKET_BUNDLES.length - 1) {
+            rows.push(new ActionRowBuilder().addComponents(...currentRow));
+            currentRow = [];
+          }
+        });
+
+        return interaction.reply({
+          embeds: [embed],
+          components: rows,
+          flags: 64, // ephemeral
+        });
+      }
+
+      // Convert Winnings to Tickets - Process bundle selection
+      if (interaction.customId.startsWith("CONVERT_BUNDLE_")) {
+        await interaction.deferReply({ flags: 64 }); // ephemeral
+
+        const bundleId = interaction.customId.replace("CONVERT_BUNDLE_", "");
+        const { getBundleById } = require("../config/ticketBundles");
+        const Profile = require("../models/profileSchema");
+
+        const bundle = getBundleById(bundleId);
+        if (!bundle) {
+          return interaction.editReply("❌ Invalid bundle selected.");
+        }
+
+        const profile = await Profile.findOne({ serverId, userId });
+        if (!profile) {
+          return interaction.editReply("❌ Profile not found.");
+        }
+
+        // Check if user has enough winnings
+        if (profile.winningsBalance < bundle.price) {
+          return interaction.editReply(
+            `❌ You don't have enough winnings. You need $${bundle.price.toFixed(2)} but only have $${profile.winningsBalance.toFixed(2)}.`
+          );
+        }
+
+        // Process conversion
+        profile.winningsBalance -= bundle.price;
+        profile.balance += bundle.tickets;
+        await profile.save();
+
+        return interaction.editReply(
+          `✅ Successfully converted $${bundle.price.toFixed(2)} into **${bundle.tickets} tickets**!\n\n` +
+          `**New Winnings Balance:** $${profile.winningsBalance.toFixed(2)}\n` +
+          `**New Ticket Balance:** ${profile.balance} tickets 🎫`
+        );
+      }
+
       // Prize catalog - Redeem button
       if (interaction.customId.startsWith("redeem_")) {
         const {

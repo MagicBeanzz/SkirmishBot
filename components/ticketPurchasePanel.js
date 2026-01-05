@@ -41,6 +41,15 @@ function ticketPurchaseButtons() {
     rows.push(row2);
   }
 
+  // Add "Convert Winnings to Tickets" button
+  const convertRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("CONVERT_WINNINGS_TO_TICKETS")
+      .setLabel("💰 Convert Winnings to Tickets")
+      .setStyle(ButtonStyle.Secondary)
+  );
+  rows.push(convertRow);
+
   return rows;
 }
 
