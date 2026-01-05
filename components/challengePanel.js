@@ -5,7 +5,7 @@ const {
   EmbedBuilder,
 } = require("discord.js");
 
-const CHALLENGE_CHANNEL_ID = "1457517486558941204";
+const MATCHMAKING_CHANNEL_ID = "1457148385533362428"; // Panel goes in matchmaking channel
 const PANEL_TITLE = "⚔️ Challenge a Friend";
 
 /**
@@ -20,8 +20,9 @@ function buildChallengePanelEmbed() {
         "1️⃣ Click 'Challenge Someone'\n" +
         "2️⃣ Enter your opponent's username or ID\n" +
         "3️⃣ Select a tier\n" +
-        "4️⃣ They have 5 minutes to accept\n" +
-        "5️⃣ Battle it out for the prize!"
+        "4️⃣ They'll receive a notification in <#1457517486558941204>\n" +
+        "5️⃣ They have 5 minutes to accept\n" +
+        "6️⃣ Battle it out for the prize!"
     )
     .setColor(0xffa500)
     .setTimestamp(new Date());
@@ -58,7 +59,7 @@ function buildChallengePanel() {
  */
 async function ensureChallengePanel(client) {
   try {
-    const channel = await client.channels.fetch(CHALLENGE_CHANNEL_ID);
+    const channel = await client.channels.fetch(MATCHMAKING_CHANNEL_ID);
 
     if (!channel) {
       console.error("❌ Matchmaking channel not found!");
