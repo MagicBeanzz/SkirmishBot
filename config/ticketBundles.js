@@ -39,8 +39,8 @@ const TICKET_BUNDLES = [
   {
     id: "pro_25",
     tickets: 25,
-    price: 25.0, // $1.00/ticket - covers 1 T20 + 1 T5
-    priceInCents: 2500,
+    price: 25.5, // $1.02/ticket - covers 1 T20 + 1 T5
+    priceInCents: 2550,
     label: "Pro Pack",
     description: "25 tickets - Multiple tournament entries",
     emoji: "🎖️",
@@ -49,8 +49,8 @@ const TICKET_BUNDLES = [
   {
     id: "elite_50",
     tickets: 50,
-    price: 48.0, // $0.96/ticket - BEST VALUE, covers 2 T20 + 1 T10
-    priceInCents: 4800,
+    price: 50.0, // $1.00/ticket - covers 2 T20 + 1 T10
+    priceInCents: 5000,
     label: "Elite Pack",
     description: "50 tickets - Best value for serious players",
     emoji: "💎",
@@ -59,10 +59,10 @@ const TICKET_BUNDLES = [
   {
     id: "champion_100",
     tickets: 100,
-    price: 92.0, // $0.92/ticket - ULTIMATE VALUE
-    priceInCents: 9200,
+    price: 100.0, // $1.00/ticket - BEST VALUE
+    priceInCents: 10000,
     label: "Champion Pack",
-    description: "100 tickets - Ultimate value for grinders",
+    description: "100 tickets - Best value for grinders",
     emoji: "👑",
     popular: false,
   },
