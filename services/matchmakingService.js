@@ -736,15 +736,15 @@ async function reportMatchResult(client, matchId, winnerId, reporterId, interact
       throw err;
     }
 
-    // Determine loser for confirmation message
-    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+    // Determine opponent who needs to confirm (not the reporter)
+    const opponentId = reporterId === match.player1Id ? match.player2Id : match.player1Id;
 
     // Update the message with confirmation buttons
     const embed = new EmbedBuilder()
       .setTitle("⏳ Win Report Pending Confirmation")
       .setDescription(
         `<@${reporterId}> reported that <@${winnerId}> won.\n\n` +
-          `Waiting for confirmation from <@${loserId}>...`
+          `Waiting for confirmation from <@${opponentId}>...`
       )
       .setColor(0xfee75c)
       .setFooter({ text: "The opponent must confirm or dispute this result" });
@@ -768,7 +768,7 @@ async function reportMatchResult(client, matchId, winnerId, reporterId, interact
 
     return {
       success: true,
-      message: `✅ Result reported. Waiting for <@${loserId}> to confirm.`,
+      message: `✅ Result reported. Waiting for <@${opponentId}> to confirm.`,
     };
   } catch (err) {
     console.error("Error reporting match result:", err);
