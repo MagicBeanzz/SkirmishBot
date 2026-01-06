@@ -22,9 +22,13 @@ async function safeDisplayName(guild, userId) {
 
 /**
  * Add a player to the matchmaking queue
+ * Uses transactions to prevent ticket loss if queue join fails
  * Returns { success: boolean, message: string, match?: MatchmakingMatch }
  */
 async function joinMatchmaking(client, serverId, userId, tierKey) {
+  const mongoose = require("mongoose");
+  let session;
+
   try {
     const tier = MATCHMAKING_TIERS.find((t) => t.key === tierKey);
     if (!tier) {
@@ -62,19 +66,44 @@ async function joinMatchmaking(client, serverId, userId, tierKey) {
       };
     }
 
-    // Deduct tickets
-    profile.balance -= tier.cost;
-    await profile.save();
+    // Start transaction for ticket deduction + queue join
+    session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+      // Atomically deduct tickets
+      const updatedProfile = await Profile.findOneAndUpdate(
+        {
+          serverId,
+          userId,
+          balance: { $gte: tier.cost }, // Only deduct if enough balance
+        },
+        {
+          $inc: { balance: -tier.cost },
+        },
+        { session, new: true }
+      );
 
-    // Add to queue
-    await MatchmakingEntry.create({
-      serverId,
-      userId,
-      tierKey,
-      joinedAt: new Date(),
+      if (!updatedProfile) {
+        throw new Error("INSUFFICIENT_BALANCE");
+      }
+
+      // Add to queue
+      await MatchmakingEntry.create(
+        [
+          {
+            serverId,
+            userId,
+            tierKey,
+            joinedAt: new Date(),
+          },
+        ],
+        { session }
+      );
     });
 
-    // Check if there's an opponent waiting
+    await session.endSession();
+    session = null;
+
+    // Check if there's an opponent waiting (outside transaction)
     const opponent = await MatchmakingEntry.findOne({
       serverId,
       tierKey,
@@ -83,19 +112,116 @@ async function joinMatchmaking(client, serverId, userId, tierKey) {
 
     if (opponent) {
       // Found a match! Remove both from queue and create match
-      await MatchmakingEntry.deleteMany({
-        serverId,
-        userId: { $in: [userId, opponent.userId] },
+      // Use transaction to ensure both are removed atomically
+      session = await mongoose.startSession();
+      let matchData;
+
+      await session.withTransaction(async () => {
+        // Remove both from queue atomically
+        const deleteResult = await MatchmakingEntry.deleteMany(
+          {
+            serverId,
+            userId: { $in: [userId, opponent.userId] },
+          },
+          { session }
+        );
+
+        if (deleteResult.deletedCount !== 2) {
+          throw new Error("QUEUE_REMOVAL_FAILED");
+        }
+
+        // Create match document (Discord channel created after transaction)
+        const matchDoc = await MatchmakingMatch.create(
+          [
+            {
+              serverId,
+              tierKey,
+              player1Id: userId,
+              player2Id: opponent.userId,
+              status: "pickban",
+              pickBanState: {
+                bannedMaps: [],
+                selectedMap: null,
+                currentAction: "p1_ban",
+              },
+            },
+          ],
+          { session }
+        );
+
+        matchData = matchDoc[0];
       });
 
-      // Create the match
-      const match = await createMatch(client, serverId, tierKey, userId, opponent.userId);
+      await session.endSession();
+      session = null;
 
-      return {
-        success: true,
-        message: `✅ Match found! Creating your match channel...`,
-        match,
-      };
+      // Create Discord channel (outside transaction since it's an external API call)
+      try {
+        const guild = client.guilds.cache.get(serverId);
+        if (!guild) throw new Error("Guild not found");
+
+        const p1Name = (await safeDisplayName(guild, userId))
+          .slice(0, 10)
+          .replace(/[^a-zA-Z0-9]/g, "");
+        const p2Name = (await safeDisplayName(guild, opponent.userId))
+          .slice(0, 10)
+          .replace(/[^a-zA-Z0-9]/g, "");
+
+        const channel = await guild.channels.create({
+          name: `${tier.label}-${p1Name}-vs-${p2Name}`,
+          type: ChannelType.GuildText,
+          parent: MATCH_CATEGORY_ID,
+          permissionOverwrites: [
+            {
+              id: guild.roles.everyone,
+              deny: [PermissionFlagsBits.ViewChannel],
+            },
+            {
+              id: userId,
+              allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.SendMessages,
+                PermissionFlagsBits.ReadMessageHistory,
+              ],
+            },
+            {
+              id: opponent.userId,
+              allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.SendMessages,
+                PermissionFlagsBits.ReadMessageHistory,
+              ],
+            },
+          ],
+        });
+
+        matchData.channelId = channel.id;
+        await matchData.save();
+
+        // Send initial pick/ban message
+        const pickBanMessage = await sendInitialPickBanMessage(client, matchData);
+        matchData.pickBanState.messageId = pickBanMessage.id;
+        await matchData.save();
+
+        return {
+          success: true,
+          message: `✅ Match found! Creating your match channel...`,
+          match: matchData,
+        };
+      } catch (channelErr) {
+        console.error("Error creating match channel:", channelErr);
+        // If Discord channel creation fails, cancel the match and refund tickets
+        await MatchmakingMatch.findByIdAndUpdate(matchData._id, { status: "cancelled" });
+
+        // Refund both players
+        await Profile.findOneAndUpdate({ serverId, userId }, { $inc: { balance: tier.cost } });
+        await Profile.findOneAndUpdate({ serverId, userId: opponent.userId }, { $inc: { balance: tier.cost } });
+
+        return {
+          success: false,
+          message: "❌ Failed to create match channel. Tickets have been refunded. Please try again.",
+        };
+      }
     } else {
       // Waiting for opponent
       return {
@@ -104,8 +230,25 @@ async function joinMatchmaking(client, serverId, userId, tierKey) {
       };
     }
   } catch (err) {
+    if (err.message === "INSUFFICIENT_BALANCE") {
+      return {
+        success: false,
+        message: `❌ You need **${MATCHMAKING_TIERS.find((t) => t.key === tierKey)?.cost}** tickets to join this tier.`,
+      };
+    }
+    if (err.message === "QUEUE_REMOVAL_FAILED") {
+      return {
+        success: false,
+        message: "❌ Failed to match players. Please try joining queue again.",
+      };
+    }
+
     console.error("Error in joinMatchmaking:", err);
     return { success: false, message: "❌ An error occurred. Please try again." };
+  } finally {
+    if (session) {
+      await session.endSession();
+    }
   }
 }
 
@@ -509,6 +652,7 @@ async function handleMapSelection(client, matchId, map, userId, interaction) {
 
 /**
  * Report match result (requires confirmation from opponent)
+ * Uses atomic operations to prevent race conditions
  */
 async function reportMatchResult(client, matchId, winnerId, reporterId, interaction) {
   try {
@@ -531,27 +675,65 @@ async function reportMatchResult(client, matchId, winnerId, reporterId, interact
       return { success: false, message: "❌ Invalid winner." };
     }
 
-    // Check if report already exists
-    let report = await MatchmakingReport.findOne({ matchId: matchId.toString() });
+    // Use atomic findOneAndUpdate to prevent race conditions
+    // Only update if no report exists OR report has no winner yet
+    const existingReport = await MatchmakingReport.findOne({ matchId: matchId.toString() });
 
-    if (report && report.reportedWinnerId) {
-      return {
-        success: false,
-        message: "❌ A result has already been reported for this match. Waiting for confirmation.",
-      };
+    // Check if there's already a report with a different winner (race condition detected)
+    if (existingReport && existingReport.reportedWinnerId) {
+      if (existingReport.reportedWinnerId === winnerId) {
+        return {
+          success: false,
+          message: "❌ This result has already been reported. Waiting for confirmation.",
+        };
+      } else {
+        // Different winner reported - automatic dispute
+        existingReport.disputed = true;
+        await existingReport.save();
+
+        return {
+          success: false,
+          message: "❌ Conflicting reports detected. This match has been flagged for admin review.",
+        };
+      }
     }
 
-    // Create or update report
-    if (!report) {
-      report = await MatchmakingReport.create({
-        matchId: matchId.toString(),
-        reportedWinnerId: winnerId,
-        reportedBy: reporterId,
-      });
-    } else {
-      report.reportedWinnerId = winnerId;
-      report.reportedBy = reporterId;
-      await report.save();
+    // Try to create report atomically (prevents duplicate reports due to unique constraint)
+    let report;
+    try {
+      if (!existingReport) {
+        report = await MatchmakingReport.create({
+          matchId: matchId.toString(),
+          reportedWinnerId: winnerId,
+          reportedBy: reporterId,
+        });
+      } else {
+        // Update existing empty report
+        report = existingReport;
+        report.reportedWinnerId = winnerId;
+        report.reportedBy = reporterId;
+        await report.save();
+      }
+    } catch (err) {
+      // Handle race condition where both players report at exact same time
+      if (err.code === 11000) {
+        // Duplicate key error - report already exists
+        const conflictReport = await MatchmakingReport.findOne({ matchId: matchId.toString() });
+        if (conflictReport && conflictReport.reportedWinnerId !== winnerId) {
+          // Different winner - flag dispute
+          conflictReport.disputed = true;
+          await conflictReport.save();
+          return {
+            success: false,
+            message: "❌ Conflicting reports detected. This match has been flagged for admin review.",
+          };
+        }
+        return {
+          success: false,
+          message: "❌ A result has already been reported for this match.",
+        };
+      }
+      throw err;
     }
 
     // Determine loser for confirmation message
@@ -596,59 +778,101 @@ async function reportMatchResult(client, matchId, winnerId, reporterId, interact
 
 /**
  * Confirm match result and award prize
+ * Uses MongoDB transactions to prevent race conditions and ensure atomic operations
  */
 async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
+  const mongoose = require("mongoose");
+  const session = await mongoose.startSession();
+
   try {
     const MatchmakingReport = require("../models/MatchmakingReport");
 
-    const match = await MatchmakingMatch.findById(matchId);
-    if (!match) {
-      return { success: false, message: "❌ Match not found." };
-    }
+    // Start transaction
+    const result = await session.withTransaction(async () => {
+      // Fetch match with session
+      const match = await MatchmakingMatch.findById(matchId).session(session);
+      if (!match) {
+        throw new Error("MATCH_NOT_FOUND");
+      }
 
-    const report = await MatchmakingReport.findOne({ matchId: matchId.toString() });
-    if (!report || !report.reportedWinnerId) {
-      return { success: false, message: "❌ No report to confirm." };
-    }
+      // Check if match already completed (prevents double-confirmation)
+      if (match.winnerId) {
+        throw new Error("MATCH_ALREADY_COMPLETED");
+      }
 
-    if (confirmerId === report.reportedBy) {
-      return {
-        success: false,
-        message: "❌ You cannot confirm your own report. Wait for your opponent to confirm.",
-      };
-    }
+      const report = await MatchmakingReport.findOne({ matchId: matchId.toString() }).session(session);
+      if (!report || !report.reportedWinnerId) {
+        throw new Error("NO_REPORT");
+      }
 
-    if (![match.player1Id, match.player2Id].includes(confirmerId)) {
-      return {
-        success: false,
-        message: "❌ Only participants in this match can confirm the result.",
-      };
-    }
+      // Check if report is disputed
+      if (report.disputed) {
+        throw new Error("MATCH_DISPUTED");
+      }
 
-    // Mark report as confirmed
-    report.confirmed = true;
-    await report.save();
+      if (confirmerId === report.reportedBy) {
+        throw new Error("CANNOT_CONFIRM_OWN_REPORT");
+      }
 
-    // Update match
-    match.winnerId = winnerId;
-    match.status = "completed";
-    match.completedAt = new Date();
-    await match.save();
+      if (![match.player1Id, match.player2Id].includes(confirmerId)) {
+        throw new Error("NOT_A_PARTICIPANT");
+      }
 
-    // Award prize to winner
-    const tier = MATCHMAKING_TIERS.find((t) => t.key === match.tierKey);
-    const profile = await Profile.findOne({
-      serverId: match.serverId,
-      userId: winnerId,
+      // Verify winner matches the report
+      if (winnerId !== report.reportedWinnerId) {
+        throw new Error("WINNER_MISMATCH");
+      }
+
+      // Atomically update match to completed state
+      // This prevents double-confirmation if called concurrently
+      const updatedMatch = await MatchmakingMatch.findOneAndUpdate(
+        {
+          _id: matchId,
+          winnerId: null, // Only update if winnerId is still null
+        },
+        {
+          $set: {
+            winnerId: winnerId,
+            status: "completed",
+            completedAt: new Date(),
+          },
+        },
+        { session, new: true }
+      );
+
+      if (!updatedMatch) {
+        // Match was already completed by another concurrent request
+        throw new Error("MATCH_ALREADY_COMPLETED");
+      }
+
+      // Mark report as confirmed
+      report.confirmed = true;
+      await report.save({ session });
+
+      // Award prize to winner atomically
+      const tier = MATCHMAKING_TIERS.find((t) => t.key === match.tierKey);
+      const profileUpdate = await Profile.findOneAndUpdate(
+        {
+          serverId: match.serverId,
+          userId: winnerId,
+        },
+        {
+          $inc: { winningsBalance: tier.prize },
+        },
+        { session, new: true, upsert: true }
+      );
+
+      if (!profileUpdate) {
+        throw new Error("PROFILE_UPDATE_FAILED");
+      }
+
+      return { match: updatedMatch, tier, loserId: winnerId === match.player1Id ? match.player2Id : match.player1Id };
     });
 
-    if (profile) {
-      profile.winningsBalance = (profile.winningsBalance || 0) + tier.prize;
-      await profile.save();
-    }
+    // Transaction succeeded - now do non-critical operations outside transaction
+    const { match, tier, loserId } = result;
 
-    // Record match stats
-    const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+    // Record match stats (non-critical)
     try {
       const { recordMatchResult, recordMatchmakingWin } = require("./statsService");
       await recordMatchResult(match.serverId, winnerId, loserId);
@@ -657,7 +881,7 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       console.error("Error recording match stats:", err);
     }
 
-    // Log match result
+    // Log match result (non-critical)
     try {
       const { logMatchmakingResult } = require("./matchLogger");
       await logMatchmakingResult(client, match, winnerId, tier);
@@ -665,7 +889,7 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       console.error("Error logging matchmaking result:", err);
     }
 
-    // Refresh leaderboard
+    // Refresh leaderboard (non-critical)
     try {
       const { refreshLeaderboard } = require("../components/leaderboardPanel");
       await refreshLeaderboard(client);
@@ -704,8 +928,39 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
       message: `✅ Match completed! <@${winnerId}> wins $${tier.prize.toFixed(2)}!`,
     };
   } catch (err) {
+    // Handle specific error cases
+    if (err.message === "MATCH_NOT_FOUND") {
+      return { success: false, message: "❌ Match not found." };
+    }
+    if (err.message === "MATCH_ALREADY_COMPLETED") {
+      return { success: false, message: "❌ This match has already been completed." };
+    }
+    if (err.message === "NO_REPORT") {
+      return { success: false, message: "❌ No report to confirm." };
+    }
+    if (err.message === "MATCH_DISPUTED") {
+      return { success: false, message: "❌ This match is disputed and requires admin review." };
+    }
+    if (err.message === "CANNOT_CONFIRM_OWN_REPORT") {
+      return {
+        success: false,
+        message: "❌ You cannot confirm your own report. Wait for your opponent to confirm.",
+      };
+    }
+    if (err.message === "NOT_A_PARTICIPANT") {
+      return {
+        success: false,
+        message: "❌ Only participants in this match can confirm the result.",
+      };
+    }
+    if (err.message === "WINNER_MISMATCH") {
+      return { success: false, message: "❌ Winner ID mismatch. Please report to an admin." };
+    }
+
     console.error("Error confirming match result:", err);
-    return { success: false, message: "❌ An error occurred." };
+    return { success: false, message: "❌ An error occurred while confirming the match." };
+  } finally {
+    await session.endSession();
   }
 }
 
