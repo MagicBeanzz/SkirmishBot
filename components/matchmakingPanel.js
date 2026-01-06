@@ -69,8 +69,8 @@ async function buildPanelEmbed(serverId) {
   const embed = new EmbedBuilder()
     .setTitle(PANEL_TITLE)
     .setDescription(
-      "Join a 1v1 matchmaking tier below. Once another player joins the same tier, " +
-        "a private match channel will be created with map pick/ban. Winner takes the prize!"
+      "Join 1v1 matchmaking queue below. Once another player joins the same tier, " +
+        "a private match channel will be created with map pick/ban. Vandal/Phantom only! Winner takes the prize!"
     )
     .setColor(0xff4654)
     .setTimestamp(new Date());
@@ -83,7 +83,9 @@ async function buildPanelEmbed(serverId) {
 
     embed.addFields({
       name: `${tier.label} — ${tier.cost}🎟️ entry`,
-      value: `Players queued: **${count}**\n💰 Prize: **$${tier.prize.toFixed(2)}**`,
+      value: `Players queued: **${count}**\n💰 Prize: **$${tier.prize.toFixed(
+        2
+      )}**`,
       inline: true,
     });
   }

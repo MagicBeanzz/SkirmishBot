@@ -56,7 +56,7 @@ function ticketPurchaseButtons() {
 function buildEmbed() {
   let bundleDesc =
     "**💳 Secure Ticket Purchases**\n" +
-    "Buy tickets to enter tournaments and compete for cash prizes!\n\n" +
+    "Buy tickets to enter skirmish matches and compete for cash prizes!\n\n" +
     "**📦 Available Bundles:**\n\n";
 
   TICKET_BUNDLES.forEach((bundle) => {
