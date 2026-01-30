@@ -3,54 +3,66 @@
 /**
  * Ticket Bundle Configuration
  *
- * Strategy:
- * - Base price: $1.00 per ticket
- * - Larger bundles get discounts (encourage bigger purchases)
- * - Bundle sizes align with tournament entry costs (1, 5, 10, 20)
- * - Prices calculated to absorb Stripe fees (2.9% + $0.30)
+ * Strategy (Updated for Legal Compliance):
+ * - Base stake: $1.00 per ticket (goes to prize pool)
+ * - Service fee: 35% (small bundles) → 20% (large bundles)
+ * - Total price = Stake + Service Fee
+ * - Service fee decreases with volume to reward larger purchases
  *
- * Margin calculation:
- * - After Stripe fees, we keep ~$0.97 per ticket on average
- * - Small bundles have slightly higher per-ticket cost
- * - Large bundles reward loyalty with better value
+ * Legal Structure:
+ * - Stake = Entry fee that goes into prize pool
+ * - Service Fee = Platform fee for operating the skill competition
+ * - Prize = Stake only (service fee not included in prizes)
  */
 
 const TICKET_BUNDLES = [
   {
     id: "starter_5",
     tickets: 5,
-    price: 5.5, // $1.10/ticket - covers 1 T5 entry
-    priceInCents: 550,
+    stake: 5.0, // $1.00/ticket stake
+    serviceFeePercent: 35, // 35% service fee
+    serviceFee: 1.75,
+    price: 6.75, // Total: stake + service fee
+    priceInCents: 675,
     label: "Starter Pack",
-    description: "5 tickets - Perfect for one T5 tournament",
+    description: "5 tickets - Perfect for one MM5 entry",
     emoji: "🎫",
     popular: false,
   },
   {
     id: "basic_10",
     tickets: 10,
-    price: 10.5, // $1.05/ticket - covers 1 T10 entry
-    priceInCents: 1050,
+    stake: 10.0, // $1.00/ticket stake
+    serviceFeePercent: 30, // 30% service fee
+    serviceFee: 3.0,
+    price: 13.0, // Total: stake + service fee
+    priceInCents: 1300,
     label: "Basic Pack",
-    description: "10 tickets - One T10 or two T5 entries",
+    description: "10 tickets - One MM10 or two MM5 entries",
     emoji: "🎟️",
     popular: false,
   },
   {
     id: "pro_25",
     tickets: 25,
-    price: 25.5, // $1.02/ticket - covers 1 T20 + 1 T5
-    priceInCents: 2550,
+    stake: 25.0, // $1.00/ticket stake
+    serviceFeePercent: 25, // 25% service fee
+    serviceFee: 6.25,
+    price: 31.25, // Total: stake + service fee
+    priceInCents: 3125,
     label: "Pro Pack",
     description: "25 tickets - Multiple tournament entries",
     emoji: "🎖️",
-    popular: true, // Highlight this one
+    popular: true,
   },
   {
     id: "elite_50",
     tickets: 50,
-    price: 50.0, // $1.00/ticket - covers 2 T20 + 1 T10
-    priceInCents: 5000,
+    stake: 50.0, // $1.00/ticket stake
+    serviceFeePercent: 20, // 20% service fee - BEST VALUE
+    serviceFee: 10.0,
+    price: 60.0, // Total: stake + service fee
+    priceInCents: 6000,
     label: "Elite Pack",
     description: "50 tickets - Best value for serious players",
     emoji: "💎",
@@ -59,8 +71,11 @@ const TICKET_BUNDLES = [
   {
     id: "champion_100",
     tickets: 100,
-    price: 100.0, // $1.00/ticket - BEST VALUE
-    priceInCents: 10000,
+    stake: 100.0, // $1.00/ticket stake
+    serviceFeePercent: 20, // 20% service fee - BEST VALUE
+    serviceFee: 20.0,
+    price: 120.0, // Total: stake + service fee
+    priceInCents: 12000,
     label: "Champion Pack",
     description: "100 tickets - Best value for grinders",
     emoji: "👑",

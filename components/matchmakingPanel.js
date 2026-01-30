@@ -70,7 +70,11 @@ async function buildPanelEmbed(serverId) {
     .setTitle(PANEL_TITLE)
     .setDescription(
       "Join 1v1 matchmaking queue below. Once another player joins the same tier, " +
-        "a private match channel will be created with map pick/ban. Vandal/Phantom only! Winner takes the prize!"
+        "a private match channel will be created with map pick/ban. Vandal/Phantom only! Winner takes the prize!\n\n" +
+        "**How Pricing Works:**\n" +
+        "• Entry fee (stake) = Ticket cost ($1.00 per ticket)\n" +
+        "• Platform fee = Already paid when you purchased tickets\n" +
+        "• Winner takes 80% of combined stakes!"
     )
     .setColor(0xff4654)
     .setTimestamp(new Date());
@@ -81,11 +85,18 @@ async function buildPanelEmbed(serverId) {
       tierKey: tier.key,
     });
 
+    const stakeValue = tier.cost * 1.0; // $1.00 per ticket
+    const totalPool = stakeValue * 2; // Two players
+    const houseEdge = totalPool - tier.prize;
+
     embed.addFields({
       name: `${tier.label} — ${tier.cost}🎟️ entry`,
-      value: `Players queued: **${count}**\n💰 Prize: **$${tier.prize.toFixed(
-        2
-      )}**`,
+      value:
+        `Players queued: **${count}**\n` +
+        `Entry fee (stake): **$${stakeValue.toFixed(2)}**\n` +
+        `Platform fee: Included in ticket purchase\n` +
+        `Total cost: **${tier.cost} tickets** ($${stakeValue.toFixed(2)} stake)\n` +
+        `💰 **Prize for winner: $${tier.prize.toFixed(2)}**`,
       inline: true,
     });
   }

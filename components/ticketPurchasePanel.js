@@ -57,34 +57,38 @@ function buildEmbed() {
   let bundleDesc =
     "**💳 Secure Ticket Purchases**\n" +
     "Buy tickets to enter skirmish matches and compete for cash prizes!\n\n" +
+    "**Pricing Structure:**\n" +
+    "• Entry fee (stake): $1.00 per ticket → goes to prize pool\n" +
+    "• Platform fee: 35% → 20% (decreases with volume)\n" +
+    "• Total = Entry fee + Platform fee\n\n" +
     "**📦 Available Bundles:**\n\n";
 
   TICKET_BUNDLES.forEach((bundle) => {
-    const perTicket = (bundle.price / bundle.tickets).toFixed(2);
     const popularTag = bundle.popular ? " ⭐ **BEST VALUE**" : "";
-    const savings =
-      bundle.tickets >= 25
-        ? ` (Save $${(bundle.tickets * 1.1 - bundle.price).toFixed(2)}!)`
-        : "";
+    const feeReduction = bundle.serviceFeePercent < 35
+      ? ` (${35 - bundle.serviceFeePercent}% off fee!)`
+      : "";
 
     bundleDesc += `${bundle.emoji} **${bundle.label}**${popularTag}\n`;
-    bundleDesc += `└ ${bundle.tickets} tickets for **$${bundle.price}** ($${perTicket}/ticket)${savings}\n`;
-    bundleDesc += `└ *${bundle.description}*\n\n`;
+    bundleDesc += `├ Entry fee (stake): **$${bundle.stake.toFixed(2)}** (${bundle.tickets} tickets @ $1.00)\n`;
+    bundleDesc += `├ Platform fee: **$${bundle.serviceFee.toFixed(2)}** (${bundle.serviceFeePercent}% of stake)${feeReduction}\n`;
+    bundleDesc += `└ **Total cost: $${bundle.price.toFixed(2)}**\n`;
+    bundleDesc += `   *${bundle.description}*\n\n`;
   });
 
-  bundleDesc += "\n**Tournament Entry Costs:**\n";
-  bundleDesc += "• Tier 1: 1 ticket\n";
-  bundleDesc += "• Tier 5: 5 tickets\n";
-  bundleDesc += "• Tier 10: 10 tickets\n";
-  bundleDesc += "• Tier 20: 20 tickets\n\n";
-  bundleDesc += "💡 **Larger bundles = Better value!**\n";
+  bundleDesc += "\n**Match Entry Costs:**\n";
+  bundleDesc += "• MM5: 5 tickets ($5.00 stake)\n";
+  bundleDesc += "• MM10: 10 tickets ($10.00 stake)\n";
+  bundleDesc += "• MM20: 20 tickets ($20.00 stake)\n";
+  bundleDesc += "• MM50: 50 tickets ($50.00 stake)\n\n";
+  bundleDesc += "💡 **Larger bundles = Lower platform fees!**\n";
   bundleDesc += "✅ Powered by Stripe - Fast & Secure";
 
   return new EmbedBuilder()
     .setTitle(PANEL_TITLE)
     .setDescription(bundleDesc)
     .setColor(0x5865f2)
-    .setFooter({ text: "Tickets are credited instantly after payment" })
+    .setFooter({ text: "Tickets are credited instantly • Stakes go to prize pools" })
     .setTimestamp(new Date());
 }
 
