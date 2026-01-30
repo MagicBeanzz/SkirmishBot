@@ -145,8 +145,8 @@ AuditLogSchema.statics.logMatchPrize = async function (
     action: "match_prize_awarded",
     amounts: {
       stake: tierData.cost * 2, // Both players' stakes
-      prize: tierData.prize,
-      serviceFee: tierData.cost * 2 - tierData.prize, // House edge
+      prize: tierData.prize, // Winner receives 100% of combined stakes
+      serviceFee: tierData.cost * 2 - tierData.prize, // House take from match (0 for compliance)
     },
     details: {
       tierKey: tierData.key,

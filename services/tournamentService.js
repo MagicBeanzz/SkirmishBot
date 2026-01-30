@@ -278,10 +278,11 @@ async function considerAdvanceOrFinish(client, tournamentId) {
   tournament.state = BRACKET_STATES.COMPLETE;
   await tournament.save();
 
-  // Compute cash payout: entries * tier.cost * 0.8 (20% rake)
+  // LEGAL COMPLIANCE: Winner gets 100% of total entry fees
+  // House profit comes from ticket purchase service fees, NOT tournament outcomes
   const tier = TIERS.find((t) => t.key === tournament.tierKey);
   const cost = tier ? tier.cost : 1;
-  const payout = tournament.size * cost * 0.8; // Winner gets 80% of total entry fees
+  const payout = tournament.size * cost * 1.0; // Winner gets 100% of total entry fees
 
   const winnerProfile = await Profile.findOne({
     serverId: tournament.serverId,

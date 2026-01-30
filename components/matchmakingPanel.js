@@ -74,7 +74,7 @@ async function buildPanelEmbed(serverId) {
         "**How Pricing Works:**\n" +
         "• Entry fee (stake) = Ticket cost ($1.00 per ticket)\n" +
         "• Platform fee = Already paid when you purchased tickets\n" +
-        "• Winner takes 80% of combined stakes!"
+        "• Winner takes 100% of combined stakes!"
     )
     .setColor(0xff4654)
     .setTimestamp(new Date());

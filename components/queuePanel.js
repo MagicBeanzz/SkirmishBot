@@ -12,9 +12,9 @@ const TIERS = require("../config/tiers");
 const BTN_VIEW_PRIZES = "VIEW_PRIZES";
 const PANEL_TITLE = "🎮 Tournament Queue Panel";
 
-/** Utility: compute prize for a given size & tier cost (20% cut) */
+/** Utility: compute prize for a given size & tier cost (100% to winner) */
 function prize(size, cost) {
-  return (size * cost * 0.8).toFixed(2);
+  return (size * cost * 1.0).toFixed(2);
 }
 
 /** Build tier and utility buttons */

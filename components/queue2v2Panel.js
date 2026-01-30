@@ -12,12 +12,12 @@ const TIERS = require("../config/tiers");
 const QUEUE_2V2_CHANNEL_ID = "1436899212804620288";
 const PANEL_TITLE = "👥 2v2 Wingman Queue";
 
-/** Utility: compute prize for a given size & tier cost (20% cut) */
+/** Utility: compute prize for a given size & tier cost (100% to winner) */
 function prize(size, cost) {
   // size = number of TEAMS, each team has 2 players
   const totalPlayers = size * 2;
   const totalEntry = totalPlayers * cost;
-  return (totalEntry * 0.8).toFixed(2);
+  return (totalEntry * 1.0).toFixed(2);
 }
 
 /** Build tier buttons for 2v2 */

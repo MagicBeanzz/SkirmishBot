@@ -455,10 +455,11 @@ async function considerAdvanceOrFinish(client, tournamentId) {
     return;
   }
 
-  // Calculate total cash payout: entries * tier.cost * 0.8 (20% rake)
+  // LEGAL COMPLIANCE: Winner gets 100% of total entry fees
+  // House profit comes from ticket purchase service fees, NOT tournament outcomes
   const tier = TIERS.find((t) => t.key === tournament.tierKey);
   const cost = tier ? tier.cost : 1;
-  const totalPayout = tournament.size * cost * 0.8;
+  const totalPayout = tournament.size * cost * 1.0;
 
   // Split cash payout 50/50 between teammates
   const payoutPerPlayer = totalPayout / 2;
