@@ -1055,7 +1055,8 @@ module.exports = {
           .setTitle("💰 Convert Winnings to Tickets")
           .setDescription(
             `**Your Winnings:** $${profile.winningsBalance.toFixed(2)}\n\n` +
-            `Convert your winnings into tickets at **$1.00 per ticket** (flat rate)!\n\n` +
+            `Convert your winnings into tickets at the same rate as purchasing.\n` +
+            `**Service fees apply** (same as ticket purchases).\n\n` +
             `**Available Conversions:**`
           )
           .setColor(0xffd700);
@@ -1064,11 +1065,11 @@ module.exports = {
         let currentRow = [];
 
         TICKET_BUNDLES.forEach((bundle, index) => {
-          const conversionPrice = bundle.tickets; // $1 per ticket
+          const conversionPrice = bundle.price; // Full price including service fees
           const canAfford = profile.winningsBalance >= conversionPrice;
           const button = new ButtonBuilder()
             .setCustomId(`CONVERT_BUNDLE_${bundle.id}`)
-            .setLabel(`${bundle.emoji} ${bundle.tickets} - $${conversionPrice.toFixed(2)}`)
+            .setLabel(`${bundle.emoji} ${bundle.tickets} tickets - $${conversionPrice.toFixed(2)}`)
             .setStyle(canAfford ? (bundle.popular ? ButtonStyle.Success : ButtonStyle.Primary) : ButtonStyle.Secondary)
             .setDisabled(!canAfford);
 
@@ -1106,8 +1107,8 @@ module.exports = {
           return interaction.editReply("❌ Profile not found.");
         }
 
-        // Calculate conversion at flat $1 per ticket
-        const conversionPrice = bundle.tickets;
+        // Calculate conversion with service fees (same as ticket purchase pricing)
+        const conversionPrice = bundle.price; // Includes stake + service fee
 
         // Check if user has enough winnings
         if (profile.winningsBalance < conversionPrice) {
@@ -1116,13 +1117,17 @@ module.exports = {
           );
         }
 
-        // Process conversion at $1 per ticket
+        // Process conversion (service fees apply)
         profile.winningsBalance -= conversionPrice;
         profile.balance += bundle.tickets;
         await profile.save();
 
         return interaction.editReply(
           `✅ Successfully converted $${conversionPrice.toFixed(2)} into **${bundle.tickets} tickets**!\n\n` +
+          `**Breakdown:**\n` +
+          `• Stake: $${bundle.stake.toFixed(2)}\n` +
+          `• Service Fee: $${bundle.serviceFee.toFixed(2)} (${bundle.serviceFeePercent}%)\n` +
+          `• Total: $${bundle.price.toFixed(2)}\n\n` +
           `**New Winnings Balance:** $${profile.winningsBalance.toFixed(2)}\n` +
           `**New Ticket Balance:** ${profile.balance} tickets 🎫`
         );
