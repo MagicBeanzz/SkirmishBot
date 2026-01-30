@@ -70,6 +70,7 @@ function verifyWebhookSignature(payload, signature) {
 async function handleSuccessfulPayment(session) {
   const Profile = require("../models/profileSchema");
   const TicketPurchase = require("../models/TicketPurchase");
+  const AuditLog = require("../models/AuditLog");
 
   const { userId, serverId, bundleId, tickets } = session.metadata;
   const bundle = getBundleById(bundleId);
@@ -95,6 +96,24 @@ async function handleSuccessfulPayment(session) {
     stripeSessionId: session.id,
     stripePaymentIntent: session.payment_intent,
   });
+
+  // Log to audit trail for compliance
+  await AuditLog.logTicketPurchase(
+    userId,
+    serverId,
+    {
+      id: bundle.id,
+      tickets: bundle.tickets,
+      stake: bundle.stake,
+      serviceFee: bundle.serviceFee,
+      price: bundle.price,
+      serviceFeePercent: bundle.serviceFeePercent,
+    },
+    {
+      paymentIntentId: session.payment_intent,
+      customerId: session.customer,
+    }
+  );
 
   console.log(
     `✅ Credited ${tickets} tickets to user ${userId} (${bundle.label})`

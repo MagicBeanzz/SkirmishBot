@@ -632,11 +632,31 @@ module.exports = {
         const {
           createTicketCheckoutSession,
         } = require("../services/stripeService");
+        const { TOS_ACCEPTED_ROLE_NAME } = require("../components/tosPanel");
 
         const bundleId = interaction.customId.replace("BUY_TICKETS_", "");
 
         try {
           await interaction.deferReply({ ephemeral: true });
+
+          // LEGAL REQUIREMENT: Check ToS acceptance before allowing purchase
+          const tosRole = interaction.guild.roles.cache.find(
+            (r) => r.name === TOS_ACCEPTED_ROLE_NAME
+          );
+
+          if (!tosRole || !interaction.member.roles.cache.has(tosRole.id)) {
+            return interaction.editReply({
+              content:
+                "❌ **Terms of Service Required**\n\n" +
+                "You must accept the Terms of Service before purchasing tickets.\n" +
+                "Please visit the ToS channel and click 'Accept' to continue.\n\n" +
+                "This is required for legal compliance.",
+            });
+          }
+
+          // NOTE: Geofencing is handled via Stripe's IP collection
+          // Discord doesn't provide user IP addresses directly
+          // Stripe collects IP during checkout and we validate in webhook
 
           const session = await createTicketCheckoutSession(
             userId,

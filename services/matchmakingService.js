@@ -866,6 +866,15 @@ async function confirmMatchResult(client, matchId, winnerId, confirmerId) {
         throw new Error("PROFILE_UPDATE_FAILED");
       }
 
+      // Log prize award for compliance (within transaction)
+      const AuditLog = require("../models/AuditLog");
+      await AuditLog.logMatchPrize(
+        winnerId,
+        match.serverId,
+        matchId.toString(),
+        tier
+      );
+
       return { match: updatedMatch, tier, loserId: winnerId === match.player1Id ? match.player2Id : match.player1Id };
     });
 

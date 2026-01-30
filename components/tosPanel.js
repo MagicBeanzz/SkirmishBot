@@ -13,26 +13,39 @@ let tosMessageId = null;
  * Build the ToS acceptance embed
  */
 function buildToSEmbed() {
+  const {
+    PROHIBITED_STATES,
+    PROHIBITED_STATE_NAMES,
+  } = require("../services/geofenceService");
+
+  // Build list of prohibited state names
+  const prohibitedList = PROHIBITED_STATES.map(
+    (code) => PROHIBITED_STATE_NAMES[code] || code
+  ).join(", ");
+
   const embed = new EmbedBuilder()
     .setTitle("📜 SkirmishBot Terms of Service")
     .setDescription(
       "**Welcome to SkirmishBot!**\n\n" +
-        "Before you can participate in matches and access our service, you must read and accept our Terms of Service.\n\n" +
+        "Before you can participate in skill-based cash tournaments, you must read and accept our Terms of Service.\n\n" +
         "**By clicking Accept below, you agree to:**\n" +
         "✅ You are at least **18 years of age**\n" +
-        "✅ You have verified participation is **legal in your jurisdiction**\n" +
+        "✅ You are **NOT a resident** of a prohibited state (see below)\n" +
         "✅ You understand all **ticket sales are final** (no refunds)\n" +
+        "✅ You understand **entry fees (stakes)** go to prize pools\n" +
+        "✅ You understand **platform fees** support service operations\n" +
         "✅ You are **solely responsible** for all applicable taxes\n" +
         "✅ You agree to **binding arbitration** for disputes\n" +
         "✅ You waive your right to **class action lawsuits**\n" +
         "✅ You accept the service **AS IS** without warranties\n\n" +
-        "**IMPORTANT:** Residents of AZ, HI, IA, MS, MT, NV, and SD are **PROHIBITED** from cash prize tournaments.\n\n" +
+        `**🚫 PROHIBITED STATES:** ${prohibitedList}\n\n` +
+        "Residents of these states are **prohibited by law** from participating in skill-based gaming platforms with cash prizes.\n\n" +
         "**Please read the full Terms of Service carefully:**\n" +
         "[View Full Terms of Service](https://github.com/MagicBeanzz/Valorant-Skirmish-Underground-ToS/blob/main/TERMS_OF_SERVICE.md)"
     )
     .setColor(0x5865f2)
     .setFooter({
-      text: "You must accept the ToS to access tournament services",
+      text: "You must accept the ToS to purchase tickets • Stakes fund prize pools",
     })
     .setTimestamp();
 
