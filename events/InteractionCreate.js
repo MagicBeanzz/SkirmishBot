@@ -1369,6 +1369,12 @@ module.exports = {
       if (interaction.customId === "REQUEST_PAYOUT") {
         return handlePayoutButton(interaction);
       }
+
+      // Analytics panel buttons
+      if (interaction.customId === "analytics_refresh" || interaction.customId === "analytics_export") {
+        const { handleAnalyticsButton } = require("../components/analyticsPanel");
+        return await handleAnalyticsButton(interaction, interaction.client);
+      }
     }
 
     // String select menus

@@ -11,6 +11,10 @@ const { ensureLeaderboardPanel } = require("../components/leaderboardPanel");
 const { upsertCatalogPanel } = require("../components/catalogPanel");
 const { upsertToSPanel } = require("../components/tosPanel");
 const { ensureMatchmakingPanel } = require("../components/matchmakingPanel");
+const {
+  ensureAnalyticsPanel,
+  refreshAnalyticsPanel,
+} = require("../components/analyticsPanel");
 const QueueEntry = require("../models/QueueEntry");
 const QueueState = require("../models/QueueState");
 const scheduler = require("../jobs/queueScheduler");
@@ -89,6 +93,12 @@ module.exports = {
       console.error("Failed to setup challenge panel:", err);
     }
 
+    try {
+      await ensureAnalyticsPanel(client); // analytics dashboard panel
+    } catch (err) {
+      console.error("Failed to setup analytics panel:", err);
+    }
+
     // 3) Start the scheduler heartbeats
     scheduler.start(client); // 1v1 queue scheduler
     scheduler2v2.start(client); // 2v2 queue scheduler
@@ -104,6 +114,15 @@ module.exports = {
         console.error("Leaderboard auto-refresh failed:", err);
       }
     }, 5 * 60 * 1000); // 5 minutes
+
+    // 5) Auto-refresh analytics panel every 2 minutes
+    setInterval(async () => {
+      try {
+        await refreshAnalyticsPanel(client);
+      } catch (err) {
+        console.error("Analytics auto-refresh failed:", err);
+      }
+    }, 2 * 60 * 1000); // 2 minutes
 
     console.log("✅ All systems ready!");
   },
