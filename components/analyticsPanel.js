@@ -1,7 +1,7 @@
 // components/analyticsPanel.js
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { getAllAnalytics } = require("../services/analyticsService");
+const { getAllAnalytics, resetAllAnalyticsData } = require("../services/analyticsService");
 
 const ANALYTICS_CHANNEL_ID = "1467668822587609160";
 const PANEL_TITLE = "SKIRMISH ANALYTICS";
@@ -356,11 +356,34 @@ async function handleAnalyticsButton(interaction, client) {
     }
   } else if (interaction.customId === "analytics_reset") {
     await interaction.deferReply({ ephemeral: true });
+
+    // Reset all analytics data in database
+    const resetResult = await resetAllAnalyticsData(interaction.guild.id);
+
+    // Recreate the panel with fresh (zero) data
     await resetAnalyticsPanel(client);
-    await interaction.editReply({
-      content: "✅ Analytics panel has been reset.",
-      ephemeral: true,
-    });
+
+    if (resetResult.success) {
+      const { results } = resetResult;
+      await interaction.editReply({
+        content:
+          "✅ **Analytics Data Reset Complete**\n\n" +
+          "**Deleted:**\n" +
+          `• Ticket Purchases: ${results.ticketPurchases}\n` +
+          `• Matches: ${results.matchmakingMatches}\n` +
+          `• Payout Requests: ${results.payoutRequests}\n` +
+          `• Player Stats: ${results.playerStats}\n` +
+          `• Audit Logs: ${results.auditLogs}\n` +
+          `• Profiles Reset: ${results.profilesReset}\n\n` +
+          "All metrics are now at zero. Ready for production!",
+        ephemeral: true,
+      });
+    } else {
+      await interaction.editReply({
+        content: `❌ Reset failed: ${resetResult.error}`,
+        ephemeral: true,
+      });
+    }
   }
 }
 

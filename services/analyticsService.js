@@ -435,6 +435,61 @@ async function getAllAnalytics(serverId) {
   };
 }
 
+/**
+ * Reset all analytics data (for wiping test data before going live)
+ * WARNING: This permanently deletes all financial and match data!
+ */
+async function resetAllAnalyticsData(serverId) {
+  const results = {
+    ticketPurchases: 0,
+    matchmakingMatches: 0,
+    payoutRequests: 0,
+    playerStats: 0,
+    auditLogs: 0,
+    profilesReset: 0,
+  };
+
+  try {
+    // Delete all ticket purchases
+    const ticketResult = await TicketPurchase.deleteMany({ serverId });
+    results.ticketPurchases = ticketResult.deletedCount;
+
+    // Delete all matchmaking matches
+    const matchResult = await MatchmakingMatch.deleteMany({ serverId });
+    results.matchmakingMatches = matchResult.deletedCount;
+
+    // Delete all payout requests
+    const payoutResult = await PayoutRequest.deleteMany({ serverId });
+    results.payoutRequests = payoutResult.deletedCount;
+
+    // Delete all player stats
+    const statsResult = await PlayerStats.deleteMany({ serverId });
+    results.playerStats = statsResult.deletedCount;
+
+    // Delete all audit logs
+    const auditResult = await AuditLog.deleteMany({ serverId });
+    results.auditLogs = auditResult.deletedCount;
+
+    // Reset all profile balances to defaults (keep profiles, just reset balances)
+    const profileResult = await Profile.updateMany(
+      { serverId },
+      {
+        $set: {
+          balance: 10, // Default starting tickets
+          winningsBalance: 0,
+        },
+      }
+    );
+    results.profilesReset = profileResult.modifiedCount;
+
+    console.log(`[Analytics Reset] Server ${serverId}:`, results);
+    return { success: true, results };
+  } catch (err) {
+    console.error("Failed to reset analytics data:", err);
+    return { success: false, error: err.message };
+  }
+}
+
 module.exports = {
   getRevenueMetrics,
   getUserMetrics,
@@ -442,4 +497,5 @@ module.exports = {
   getPayoutMetrics,
   getFinancialHealth,
   getAllAnalytics,
+  resetAllAnalyticsData,
 };
