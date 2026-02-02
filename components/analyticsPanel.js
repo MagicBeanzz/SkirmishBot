@@ -224,7 +224,12 @@ function buildButtonRow() {
       .setCustomId("analytics_export")
       .setLabel("Export Report")
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji("📄")
+      .setEmoji("📄"),
+    new ButtonBuilder()
+      .setCustomId("analytics_reset")
+      .setLabel("Reset Panel")
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji("🗑️")
   );
 }
 
@@ -293,6 +298,39 @@ async function refreshAnalyticsPanel(client) {
 }
 
 /**
+ * Reset the analytics panel (delete and recreate)
+ */
+async function resetAnalyticsPanel(client) {
+  try {
+    const guild = await client.guilds.fetch(process.env.GUILD_ID);
+    const channel = await guild.channels.fetch(ANALYTICS_CHANNEL_ID);
+
+    if (!channel) return;
+
+    // Delete existing panel(s)
+    const messages = await channel.messages.fetch({ limit: 20 });
+    const existingPanels = messages.filter(
+      (m) =>
+        m.author.id === client.user.id &&
+        m.embeds?.[0]?.title?.includes("ANALYTICS")
+    );
+
+    for (const [, msg] of existingPanels) {
+      await msg.delete().catch(() => {});
+    }
+
+    // Create fresh panel
+    const embed = await buildAnalyticsEmbed(guild.id);
+    const row = buildButtonRow();
+    await channel.send({ embeds: [embed], components: [row] });
+
+    console.log("✅ Analytics panel reset");
+  } catch (err) {
+    console.error("Failed to reset analytics panel:", err);
+  }
+}
+
+/**
  * Handle button interactions
  */
 async function handleAnalyticsButton(interaction, client) {
@@ -316,6 +354,13 @@ async function handleAnalyticsButton(interaction, client) {
         ephemeral: true,
       });
     }
+  } else if (interaction.customId === "analytics_reset") {
+    await interaction.deferReply({ ephemeral: true });
+    await resetAnalyticsPanel(client);
+    await interaction.editReply({
+      content: "✅ Analytics panel has been reset.",
+      ephemeral: true,
+    });
   }
 }
 
@@ -379,6 +424,7 @@ function generateTextReport(data) {
 module.exports = {
   ensureAnalyticsPanel,
   refreshAnalyticsPanel,
+  resetAnalyticsPanel,
   handleAnalyticsButton,
   buildAnalyticsEmbed,
   ANALYTICS_CHANNEL_ID,

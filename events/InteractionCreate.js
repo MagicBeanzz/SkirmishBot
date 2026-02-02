@@ -1371,7 +1371,7 @@ module.exports = {
       }
 
       // Analytics panel buttons
-      if (interaction.customId === "analytics_refresh" || interaction.customId === "analytics_export") {
+      if (interaction.customId === "analytics_refresh" || interaction.customId === "analytics_export" || interaction.customId === "analytics_reset") {
         const { handleAnalyticsButton } = require("../components/analyticsPanel");
         return await handleAnalyticsButton(interaction, interaction.client);
       }
