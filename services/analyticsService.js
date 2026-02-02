@@ -470,12 +470,12 @@ async function resetAllAnalyticsData(serverId) {
     const auditResult = await AuditLog.deleteMany({ serverId });
     results.auditLogs = auditResult.deletedCount;
 
-    // Reset all profile balances to defaults (keep profiles, just reset balances)
+    // Reset all profile balances to zero (keep profiles, just reset balances)
     const profileResult = await Profile.updateMany(
       { serverId },
       {
         $set: {
-          balance: 10, // Default starting tickets
+          balance: 0,
           winningsBalance: 0,
         },
       }
