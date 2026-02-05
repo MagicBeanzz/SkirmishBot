@@ -8,28 +8,68 @@ const MatchmakingEntry = require("../models/MatchmakingEntry");
 const MATCHMAKING_TIERS = require("../config/matchmakingTiers");
 
 const MATCHMAKING_CHANNEL_ID = "1457148385533362428";
-const PANEL_TITLE = "⚔️ 1v1 Matchmaking";
+const PANEL_TITLE = "⚔️ 1v1 MATCHMAKING";
 
 let matchmakingMessageId = null;
 
+// Color-coded tier emojis
+const TIER_STYLES = {
+  MM5: { emoji: "🟢", color: "Green", name: "$5 Skirmish" },
+  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Battle" },
+  MM20: { emoji: "🟠", color: "Orange", name: "$20 Clash" },
+  MM50: { emoji: "🔴", color: "Red", name: "$50 War" },
+};
+
 /**
- * Build tier buttons for matchmaking
+ * Build tier buttons with queue status indicators
  */
-function buildTierButtons() {
+async function buildTierButtons(serverId) {
   const rows = [];
 
-  // All tier join buttons on a single horizontal row
-  const joinRow = new ActionRowBuilder().addComponents(
-    ...MATCHMAKING_TIERS.map((tier) =>
-      new ButtonBuilder()
-        .setCustomId(`MM_JOIN_${tier.key}`)
-        .setLabel(`${tier.label} Queue`)
-        .setStyle(ButtonStyle.Primary)
-    )
-  );
-  rows.push(joinRow);
+  // Get queue counts for all tiers
+  const queueCounts = {};
+  for (const tier of MATCHMAKING_TIERS) {
+    queueCounts[tier.key] = await MatchmakingEntry.countDocuments({
+      serverId,
+      tierKey: tier.key,
+    });
+  }
 
-  // Utility row: Leave / Refresh
+  // Row 1: $5 and $10 tier buttons
+  const row1 = new ActionRowBuilder().addComponents(
+    ...MATCHMAKING_TIERS.slice(0, 2).map((tier) => {
+      const style = TIER_STYLES[tier.key];
+      const count = queueCounts[tier.key];
+      const label = count > 0
+        ? `${style.emoji} WIN $${tier.prize} • ${count} waiting`
+        : `${style.emoji} WIN $${tier.prize}`;
+
+      return new ButtonBuilder()
+        .setCustomId(`MM_JOIN_${tier.key}`)
+        .setLabel(label)
+        .setStyle(count > 0 ? ButtonStyle.Success : ButtonStyle.Primary);
+    })
+  );
+  rows.push(row1);
+
+  // Row 2: $20 and $50 tier buttons
+  const row2 = new ActionRowBuilder().addComponents(
+    ...MATCHMAKING_TIERS.slice(2, 4).map((tier) => {
+      const style = TIER_STYLES[tier.key];
+      const count = queueCounts[tier.key];
+      const label = count > 0
+        ? `${style.emoji} WIN $${tier.prize} • ${count} waiting`
+        : `${style.emoji} WIN $${tier.prize}`;
+
+      return new ButtonBuilder()
+        .setCustomId(`MM_JOIN_${tier.key}`)
+        .setLabel(label)
+        .setStyle(count > 0 ? ButtonStyle.Success : ButtonStyle.Primary);
+    })
+  );
+  rows.push(row2);
+
+  // Row 3: Leave Queue + Refresh (secondary style)
   const utilRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("MM_LEAVE_QUEUE")
@@ -42,7 +82,7 @@ function buildTierButtons() {
   );
   rows.push(utilRow);
 
-  // External info links
+  // Row 4: External links
   const linkRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setLabel("📜 Rules")
@@ -63,40 +103,43 @@ function buildTierButtons() {
 }
 
 /**
- * Build the matchmaking panel embed with queue counts
+ * Build the matchmaking panel embed with clean, prize-forward design
  */
 async function buildPanelEmbed(serverId) {
+  // Get queue counts
+  const queueCounts = {};
+  for (const tier of MATCHMAKING_TIERS) {
+    queueCounts[tier.key] = await MatchmakingEntry.countDocuments({
+      serverId,
+      tierKey: tier.key,
+    });
+  }
+
   const embed = new EmbedBuilder()
     .setTitle(PANEL_TITLE)
     .setDescription(
-      "Join 1v1 matchmaking queue below. Once another player joins the same tier, " +
-        "a private match channel will be created with map pick/ban. Vandal/Phantom only! Winner takes the prize!\n\n" +
-        "**How Pricing Works:**\n" +
-        "• Entry fee (stake) = Ticket cost ($1.00 per ticket)\n" +
-        "• Platform fee = Already paid when you purchased tickets\n" +
-        "• Winner takes 100% of combined stakes!"
+      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes the combined stakes.**"
     )
     .setColor(0xff4654)
     .setTimestamp(new Date());
 
+  // Add tier cards - compact, prize-forward
   for (const tier of MATCHMAKING_TIERS) {
-    const count = await MatchmakingEntry.countDocuments({
-      serverId,
-      tierKey: tier.key,
-    });
+    const style = TIER_STYLES[tier.key];
+    const count = queueCounts[tier.key];
 
-    const stakeValue = tier.cost * 1.0; // $1.00 per ticket
-    const totalPool = stakeValue * 2; // Two players
-    const houseEdge = totalPool - tier.prize;
+    // Build compact tier info
+    let value = `💰 **Prize: $${tier.prize}**\n`;
+    value += `Stake: $${tier.cost}`;
+
+    // Only show queue status if someone is waiting
+    if (count > 0) {
+      value += `\n⏳ **${count} player${count > 1 ? 's' : ''} waiting!**`;
+    }
 
     embed.addFields({
-      name: `${tier.label} — ${tier.cost}🎟️ entry`,
-      value:
-        `Players queued: **${count}**\n` +
-        `Entry fee (stake): **$${stakeValue.toFixed(2)}**\n` +
-        `Platform fee: Included in ticket purchase\n` +
-        `Total cost: **${tier.cost} tickets** ($${stakeValue.toFixed(2)} stake)\n` +
-        `💰 **Prize for winner: $${tier.prize.toFixed(2)}**`,
+      name: `${style.emoji} **${style.name}**`,
+      value: value,
       inline: true,
     });
   }
@@ -109,7 +152,7 @@ async function buildPanelEmbed(serverId) {
  */
 async function buildMatchmakingPanel(serverId) {
   const embed = await buildPanelEmbed(serverId);
-  const components = buildTierButtons();
+  const components = await buildTierButtons(serverId);
 
   return { embeds: [embed], components };
 }
@@ -192,6 +235,7 @@ async function refreshMatchmakingPanel(client) {
 
 module.exports = {
   MATCHMAKING_CHANNEL_ID,
+  TIER_STYLES,
   ensureMatchmakingPanel,
   refreshMatchmakingPanel,
   buildMatchmakingPanel,

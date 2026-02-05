@@ -223,10 +223,18 @@ async function joinMatchmaking(client, serverId, userId, tierKey) {
         };
       }
     } else {
-      // Waiting for opponent
+      // Waiting for opponent - enhanced confirmation message
+      const { TIER_STYLES } = require("../components/matchmakingPanel");
+      const style = TIER_STYLES[tierKey] || { emoji: "⚔️", name: tier.label };
+
       return {
         success: true,
-        message: `✅ Joined **${tier.label}** matchmaking! Waiting for an opponent...`,
+        message:
+          `${style.emoji} **You've joined the ${style.name} queue!**\n\n` +
+          `💰 Prize: **$${tier.prize}** (winner takes all)\n` +
+          `🎟️ Stake: ${tier.cost} tickets deducted\n\n` +
+          `⏳ Waiting for an opponent...\n` +
+          `Use the **Leave Queue** button to cancel and get your tickets back.`,
       };
     }
   } catch (err) {
