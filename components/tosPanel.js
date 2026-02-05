@@ -20,7 +20,7 @@ function buildToSEmbed() {
 
   // Build list of prohibited state names
   const prohibitedList = PROHIBITED_STATES.map(
-    (code) => PROHIBITED_STATE_NAMES[code] || code
+    (code) => PROHIBITED_STATE_NAMES[code] || code,
   ).join(", ");
 
   const embed = new EmbedBuilder()
@@ -39,9 +39,9 @@ function buildToSEmbed() {
         "✅ You waive your right to **class action lawsuits**\n" +
         "✅ You accept the service **AS IS** without warranties\n\n" +
         `**🚫 PROHIBITED STATES:** ${prohibitedList}\n\n` +
-        "Residents of these states are **prohibited by law** from participating in skill-based gaming platforms with cash prizes.\n\n" +
+        "Residents of these states may be **prohibited by law** from participating in skill-based gaming platforms with cash prizes. If you play on this server please make sure you are complying with local laws in your jurisdiction. \n\n" +
         "**Please read the full Terms of Service carefully:**\n" +
-        "[View Full Terms of Service](https://github.com/MagicBeanzz/Valorant-Skirmish-Underground-ToS/blob/main/TERMS_OF_SERVICE.md)"
+        "[View Full Terms of Service](https://github.com/MagicBeanzz/Valorant-Skirmish-Underground-ToS/blob/main/TERMS_OF_SERVICE.md)",
     )
     .setColor(0x5865f2)
     .setFooter({
@@ -60,7 +60,7 @@ function buildAcceptButton() {
     new ButtonBuilder()
       .setCustomId("accept_tos")
       .setLabel("✅ I Accept the Terms of Service")
-      .setStyle(ButtonStyle.Success)
+      .setStyle(ButtonStyle.Success),
   );
 }
 
@@ -85,7 +85,7 @@ async function upsertToSPanel(client) {
         (msg) =>
           msg.author.id === client.user.id &&
           msg.embeds.length > 0 &&
-          msg.embeds[0].title === "📜 SkirmishBot Terms of Service"
+          msg.embeds[0].title === "📜 SkirmishBot Terms of Service",
       );
 
       if (existingPanel) {
@@ -121,7 +121,7 @@ async function handleToSAcceptance(interaction) {
 
     // Find or create "ToS Accepted" role
     let tosRole = guild.roles.cache.find(
-      (r) => r.name === TOS_ACCEPTED_ROLE_NAME
+      (r) => r.name === TOS_ACCEPTED_ROLE_NAME,
     );
 
     if (!tosRole) {
