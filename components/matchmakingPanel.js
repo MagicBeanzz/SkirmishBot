@@ -41,8 +41,8 @@ async function buildTierButtons(serverId) {
       const style = TIER_STYLES[tier.key];
       const count = queueCounts[tier.key];
       const label = count > 0
-        ? `${style.emoji} $${tier.prize} • ${count} in queue`
-        : `${style.emoji} WIN $${tier.prize}`;
+        ? `${style.emoji} ${style.name} • ${count} in queue`
+        : `${style.emoji} ${style.name}`;
 
       return new ButtonBuilder()
         .setCustomId(`MM_JOIN_${tier.key}`)
