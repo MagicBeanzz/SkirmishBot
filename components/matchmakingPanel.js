@@ -15,9 +15,9 @@ let matchmakingMessageId = null;
 // Color-coded tier emojis
 const TIER_STYLES = {
   MM5: { emoji: "🟢", color: "Green", name: "$5 Skirmish" },
-  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Skirmish" },
-  MM20: { emoji: "🟠", color: "Orange", name: "$20 Skirmish" },
-  MM50: { emoji: "🔴", color: "Red", name: "$50 Skirmish" },
+  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Battle" },
+  MM20: { emoji: "🟠", color: "Orange", name: "$20 Clash" },
+  MM50: { emoji: "🔴", color: "Red", name: "$50 War" },
 };
 
 /**
@@ -35,43 +35,24 @@ async function buildTierButtons(serverId) {
     });
   }
 
-  // Row 1: $5 and $10 tier buttons
-  const row1 = new ActionRowBuilder().addComponents(
-    ...MATCHMAKING_TIERS.slice(0, 2).map((tier) => {
+  // Row 1: All tier buttons on one row
+  const tierRow = new ActionRowBuilder().addComponents(
+    ...MATCHMAKING_TIERS.map((tier) => {
       const style = TIER_STYLES[tier.key];
       const count = queueCounts[tier.key];
-      const label =
-        count > 0
-          ? `${style.emoji} WIN $${tier.prize} • ${count} waiting`
-          : `${style.emoji} WIN $${tier.prize}`;
+      const label = count > 0
+        ? `${style.emoji} $${tier.prize} • ${count} in queue`
+        : `${style.emoji} WIN $${tier.prize}`;
 
       return new ButtonBuilder()
         .setCustomId(`MM_JOIN_${tier.key}`)
         .setLabel(label)
         .setStyle(count > 0 ? ButtonStyle.Success : ButtonStyle.Primary);
-    }),
+    })
   );
-  rows.push(row1);
+  rows.push(tierRow);
 
-  // Row 2: $20 and $50 tier buttons
-  const row2 = new ActionRowBuilder().addComponents(
-    ...MATCHMAKING_TIERS.slice(2, 4).map((tier) => {
-      const style = TIER_STYLES[tier.key];
-      const count = queueCounts[tier.key];
-      const label =
-        count > 0
-          ? `${style.emoji} WIN $${tier.prize} • ${count} waiting`
-          : `${style.emoji} WIN $${tier.prize}`;
-
-      return new ButtonBuilder()
-        .setCustomId(`MM_JOIN_${tier.key}`)
-        .setLabel(label)
-        .setStyle(count > 0 ? ButtonStyle.Success : ButtonStyle.Primary);
-    }),
-  );
-  rows.push(row2);
-
-  // Row 3: Leave Queue + Refresh (secondary style)
+  // Row 2: Leave Queue + Refresh (secondary style)
   const utilRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("MM_LEAVE_QUEUE")
@@ -80,24 +61,24 @@ async function buildTierButtons(serverId) {
     new ButtonBuilder()
       .setCustomId("MM_REFRESH_PANEL")
       .setLabel("Refresh")
-      .setStyle(ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary)
   );
   rows.push(utilRow);
 
-  // Row 4: External links
+  // Row 3: External links
   const linkRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setLabel("📜 Rules")
       .setStyle(ButtonStyle.Link)
       .setURL(
-        "https://discord.com/channels/1427022339362783242/1427035861362409602",
+        "https://discord.com/channels/1427022339362783242/1427035861362409602"
       ),
     new ButtonBuilder()
       .setLabel("💵 How Payouts Work")
       .setStyle(ButtonStyle.Link)
       .setURL(
-        "https://discord.com/channels/1427022339362783242/1429134493750395051",
-      ),
+        "https://discord.com/channels/1427022339362783242/1429134493750395051"
+      )
   );
   rows.push(linkRow);
 
@@ -120,7 +101,7 @@ async function buildPanelEmbed(serverId) {
   const embed = new EmbedBuilder()
     .setTitle(PANEL_TITLE)
     .setDescription(
-      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes the combined stakes.**",
+      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes all.**"
     )
     .setColor(0xff4654)
     .setTimestamp(new Date());
@@ -132,11 +113,11 @@ async function buildPanelEmbed(serverId) {
 
     // Build compact tier info
     let value = `💰 **Prize: $${tier.prize}**\n`;
-    value += `Stake: $${tier.cost}`;
+    value += `Entry Fee: 🎟️ ${tier.cost} tickets`;
 
     // Only show queue status if someone is waiting
     if (count > 0) {
-      value += `\n⏳ **${count} player${count > 1 ? "s" : ""} waiting!**`;
+      value += `\n⏳ **${count} player${count > 1 ? 's' : ''} waiting!**`;
     }
 
     embed.addFields({
@@ -179,7 +160,7 @@ async function ensureMatchmakingPanel(client) {
         (msg) =>
           msg.author.id === client.user.id &&
           msg.embeds.length > 0 &&
-          msg.embeds[0].title === PANEL_TITLE,
+          msg.embeds[0].title === PANEL_TITLE
       );
 
       if (existingPanel) {
@@ -223,7 +204,7 @@ async function refreshMatchmakingPanel(client) {
       (msg) =>
         msg.author.id === client.user.id &&
         msg.embeds.length > 0 &&
-        msg.embeds[0].title === PANEL_TITLE,
+        msg.embeds[0].title === PANEL_TITLE
     );
 
     if (panel) {
