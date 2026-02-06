@@ -15,9 +15,9 @@ let matchmakingMessageId = null;
 // Color-coded tier emojis
 const TIER_STYLES = {
   MM5: { emoji: "🟢", color: "Green", name: "$5 Skirmish" },
-  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Battle" },
-  MM20: { emoji: "🟠", color: "Orange", name: "$20 Clash" },
-  MM50: { emoji: "🔴", color: "Red", name: "$50 War" },
+  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Skirmish" },
+  MM20: { emoji: "🟠", color: "Orange", name: "$20 Skirmish" },
+  MM50: { emoji: "🔴", color: "Red", name: "$50 Skirmish" },
 };
 
 /**
@@ -40,15 +40,16 @@ async function buildTierButtons(serverId) {
     ...MATCHMAKING_TIERS.map((tier) => {
       const style = TIER_STYLES[tier.key];
       const count = queueCounts[tier.key];
-      const label = count > 0
-        ? `${style.emoji} $${tier.prize} • ${count} in queue`
-        : `${style.emoji} WIN $${tier.prize}`;
+      const label =
+        count > 0
+          ? `${style.emoji} $${tier.prize} • ${count} in queue`
+          : `${style.emoji} WIN $${tier.prize}`;
 
       return new ButtonBuilder()
         .setCustomId(`MM_JOIN_${tier.key}`)
         .setLabel(label)
         .setStyle(count > 0 ? ButtonStyle.Success : ButtonStyle.Primary);
-    })
+    }),
   );
   rows.push(tierRow);
 
@@ -61,7 +62,7 @@ async function buildTierButtons(serverId) {
     new ButtonBuilder()
       .setCustomId("MM_REFRESH_PANEL")
       .setLabel("Refresh")
-      .setStyle(ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Secondary),
   );
   rows.push(utilRow);
 
@@ -71,14 +72,14 @@ async function buildTierButtons(serverId) {
       .setLabel("📜 Rules")
       .setStyle(ButtonStyle.Link)
       .setURL(
-        "https://discord.com/channels/1427022339362783242/1427035861362409602"
+        "https://discord.com/channels/1427022339362783242/1427035861362409602",
       ),
     new ButtonBuilder()
       .setLabel("💵 How Payouts Work")
       .setStyle(ButtonStyle.Link)
       .setURL(
-        "https://discord.com/channels/1427022339362783242/1429134493750395051"
-      )
+        "https://discord.com/channels/1427022339362783242/1429134493750395051",
+      ),
   );
   rows.push(linkRow);
 
@@ -101,7 +102,7 @@ async function buildPanelEmbed(serverId) {
   const embed = new EmbedBuilder()
     .setTitle(PANEL_TITLE)
     .setDescription(
-      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes all.**"
+      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes all.**",
     )
     .setColor(0xff4654)
     .setTimestamp(new Date());
@@ -117,7 +118,7 @@ async function buildPanelEmbed(serverId) {
 
     // Only show queue status if someone is waiting
     if (count > 0) {
-      value += `\n⏳ **${count} player${count > 1 ? 's' : ''} waiting!**`;
+      value += `\n⏳ **${count} player${count > 1 ? "s" : ""} waiting!**`;
     }
 
     embed.addFields({
@@ -160,7 +161,7 @@ async function ensureMatchmakingPanel(client) {
         (msg) =>
           msg.author.id === client.user.id &&
           msg.embeds.length > 0 &&
-          msg.embeds[0].title === PANEL_TITLE
+          msg.embeds[0].title === PANEL_TITLE,
       );
 
       if (existingPanel) {
@@ -204,7 +205,7 @@ async function refreshMatchmakingPanel(client) {
       (msg) =>
         msg.author.id === client.user.id &&
         msg.embeds.length > 0 &&
-        msg.embeds[0].title === PANEL_TITLE
+        msg.embeds[0].title === PANEL_TITLE,
     );
 
     if (panel) {
