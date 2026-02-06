@@ -98,28 +98,34 @@ async function buildPanelEmbed(serverId) {
     });
   }
 
-  // Build tier table as single formatted text
-  let tierTable = "";
+  const embed = new EmbedBuilder()
+    .setTitle(PANEL_TITLE)
+    .setDescription(
+      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes all.**"
+    )
+    .setColor(0xff4654)
+    .setTimestamp(new Date());
+
+  // Add tier cards - compact, prize-forward
   for (const tier of MATCHMAKING_TIERS) {
     const style = TIER_STYLES[tier.key];
     const count = queueCounts[tier.key];
 
-    tierTable += `${style.emoji} **${style.name}**  →  💰 **$${tier.prize}**  (🎟️ ${tier.cost} tickets)`;
+    // Build compact tier info
+    let value = `💰 **Prize: $${tier.prize}**\n`;
+    value += `Entry Fee: 🎟️ ${tier.cost} tickets`;
 
+    // Only show queue status if someone is waiting
     if (count > 0) {
-      tierTable += `  ⏳ *${count} waiting*`;
+      value += `\n⏳ **${count} player${count > 1 ? 's' : ''} waiting!**`;
     }
-    tierTable += "\n";
-  }
 
-  const embed = new EmbedBuilder()
-    .setTitle(PANEL_TITLE)
-    .setDescription(
-      "**Join a 1v1 queue. Vandal/Phantom only. Winner takes all.**\n\n" +
-      tierTable
-    )
-    .setColor(0xff4654)
-    .setTimestamp(new Date());
+    embed.addFields({
+      name: `${style.emoji} **${style.name}**`,
+      value: value,
+      inline: true,
+    });
+  }
 
   return embed;
 }
