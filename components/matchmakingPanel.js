@@ -114,7 +114,7 @@ async function buildPanelEmbed(serverId) {
 
     // Build compact tier info
     let value = `💰 **Prize: $${tier.prize}**\n`;
-    value += `Entry Fee: 🎟️ ${tier.cost} tickets`;
+    value += `Entry Fee: 🎟️ ${tier.cost}`;
 
     // Only show queue status if someone is waiting
     if (count > 0) {
