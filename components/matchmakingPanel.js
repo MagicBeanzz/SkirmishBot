@@ -15,9 +15,9 @@ let matchmakingMessageId = null;
 // Color-coded tier emojis
 const TIER_STYLES = {
   MM5: { emoji: "🟢", color: "Green", name: "$5 Skirmish" },
-  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Battle" },
-  MM20: { emoji: "🟠", color: "Orange", name: "$20 Clash" },
-  MM50: { emoji: "🔴", color: "Red", name: "$50 War" },
+  MM10: { emoji: "🟡", color: "Yellow", name: "$10 Skirmish" },
+  MM20: { emoji: "🟠", color: "Orange", name: "$20 Skirmish" },
+  MM50: { emoji: "🔴", color: "Red", name: "$50 Skirmish" },
 };
 
 /**
