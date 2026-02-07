@@ -47,7 +47,7 @@ function buildRulesEmbed() {
       "1️⃣ **Player 1** bans a map\n" +
       "2️⃣ **Player 2** bans a map\n" +
       "3️⃣ Remaining map is played\n\n" +
-      "*Map ban has a time limit - if you don't ban in time, a random map is selected.*",
+      "*If you do not ban a map in a reasonable amount of time(~1-2 minutes), you are subject to forfeiting the match if disputed.*",
     inline: false,
   });
 
