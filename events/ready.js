@@ -8,6 +8,7 @@ const {
   ensureTicketPurchasePanel,
 } = require("../components/ticketPurchasePanel");
 const { ensureLeaderboardPanel } = require("../components/leaderboardPanel");
+const { ensureRulesPanel } = require("../components/rulesPanel");
 const QueueEntry = require("../models/QueueEntry");
 const QueueState = require("../models/QueueState");
 const scheduler = require("../jobs/queueScheduler");
@@ -60,6 +61,12 @@ module.exports = {
     try {
       await ensureLeaderboardPanel(client); // leaderboard panel
     } catch {}
+
+    try {
+      await ensureRulesPanel(client); // 1v1 matchmaking rules panel
+    } catch (err) {
+      console.error("Failed to setup rules panel:", err);
+    }
 
     // 3) Start the scheduler heartbeats
     scheduler.start(client); // 1v1 queue scheduler
