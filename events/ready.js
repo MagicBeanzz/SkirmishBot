@@ -8,13 +8,7 @@ const {
   ensureTicketPurchasePanel,
 } = require("../components/ticketPurchasePanel");
 const { ensureLeaderboardPanel } = require("../components/leaderboardPanel");
-const { upsertCatalogPanel } = require("../components/catalogPanel");
-const { upsertToSPanel } = require("../components/tosPanel");
-const { ensureMatchmakingPanel } = require("../components/matchmakingPanel");
-const {
-  ensureAnalyticsPanel,
-  refreshAnalyticsPanel,
-} = require("../components/analyticsPanel");
+const { ensureRulesPanel } = require("../components/rulesPanel");
 const QueueEntry = require("../models/QueueEntry");
 const QueueState = require("../models/QueueState");
 const scheduler = require("../jobs/queueScheduler");
@@ -69,34 +63,9 @@ module.exports = {
     } catch {}
 
     try {
-      await upsertCatalogPanel(client, "all", 0); // prize catalog panel
+      await ensureRulesPanel(client); // 1v1 matchmaking rules panel
     } catch (err) {
-      console.error("Failed to setup catalog panel:", err);
-    }
-
-    try {
-      await upsertToSPanel(client); // ToS acceptance panel
-    } catch (err) {
-      console.error("Failed to setup ToS panel:", err);
-    }
-
-    try {
-      await ensureMatchmakingPanel(client); // 1v1 matchmaking panel
-    } catch (err) {
-      console.error("Failed to setup matchmaking panel:", err);
-    }
-
-    try {
-      const { ensureChallengePanel } = require("../components/challengePanel");
-      await ensureChallengePanel(client); // challenge panel
-    } catch (err) {
-      console.error("Failed to setup challenge panel:", err);
-    }
-
-    try {
-      await ensureAnalyticsPanel(client); // analytics dashboard panel
-    } catch (err) {
-      console.error("Failed to setup analytics panel:", err);
+      console.error("Failed to setup rules panel:", err);
     }
 
     // 3) Start the scheduler heartbeats
@@ -114,15 +83,6 @@ module.exports = {
         console.error("Leaderboard auto-refresh failed:", err);
       }
     }, 5 * 60 * 1000); // 5 minutes
-
-    // 5) Auto-refresh analytics panel every 2 minutes
-    setInterval(async () => {
-      try {
-        await refreshAnalyticsPanel(client);
-      } catch (err) {
-        console.error("Analytics auto-refresh failed:", err);
-      }
-    }, 2 * 60 * 1000); // 2 minutes
 
     console.log("✅ All systems ready!");
   },
