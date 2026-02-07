@@ -59,7 +59,7 @@ function buildRulesEmbed() {
       "1. Add your opponent as a friend\n" +
       "2. Create a **Custom Game**\n" +
       "3. Select the map chosen from map ban\n" +
-      "4. Set **Game Mode** to Standard\n" +
+      "4. Set **Game Mode** to Skirmish\n" +
       "5. Set **Allow Cheats** to OFF\n" +
       "6. Set **Tournament Mode** to ON\n" +
       "7. Invite your opponent\n" +
