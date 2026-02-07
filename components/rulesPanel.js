@@ -10,7 +10,7 @@ function buildRulesEmbed() {
   const embed = new EmbedBuilder()
     .setTitle(PANEL_TITLE)
     .setDescription(
-      "Read these rules carefully before playing. Failure to follow them may result in a forfeit."
+      "Read these rules carefully before playing. Failure to follow them may result in a forfeit.",
     )
     .setColor(0xff4654);
 
@@ -72,10 +72,10 @@ function buildRulesEmbed() {
     name: "⚙️ REQUIRED GAME SETTINGS",
     value:
       "```\n" +
-      "Mode:            Standard\n" +
+      "Mode:            Skirmish\n" +
       "Cheats:          OFF\n" +
       "Tournament Mode: ON\n" +
-      "Overtime:        Win by 2\n" +
+      "Overtime:        None\n" +
       "```",
     inline: false,
   });
@@ -146,7 +146,7 @@ async function ensureRulesPanel(client) {
     const existing = messages.find(
       (m) =>
         m.author.id === client.user.id &&
-        m.embeds?.[0]?.title?.includes("SKIRMISH RULES")
+        m.embeds?.[0]?.title?.includes("SKIRMISH RULES"),
     );
 
     if (existing) {
