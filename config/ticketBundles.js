@@ -85,10 +85,10 @@ const TICKET_BUNDLES = [
     id: "legend_200",
     tickets: 200,
     stake: 200.0, // $1.00/ticket stake
-    serviceFeePercent: 15, // 15% service fee - BEST VALUE
-    serviceFee: 30.0,
-    price: 230.0, // Total: stake + service fee
-    priceInCents: 23000,
+    serviceFeePercent: 17.5, // 17.5% service fee
+    serviceFee: 35.0,
+    price: 235.0, // Total: stake + service fee
+    priceInCents: 23500,
     label: "Legend Pack",
     description: "200 tickets - Maximum value",
     emoji: "🏆",
