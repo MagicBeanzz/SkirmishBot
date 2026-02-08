@@ -7,39 +7,30 @@ const {
 const { TICKET_BUNDLES } = require("../config/ticketBundles");
 
 const TICKET_CHANNEL_ID = "1427041016808210442"; // Wallet channel
-const PANEL_TITLE = "🎫 Purchase Tickets";
+const PANEL_TITLE = "🎟️ TICKET SHOP";
 
 function ticketPurchaseButtons() {
-  // Create buttons for ticket bundles (split into 2 rows: 3 + 2)
+  // Create buttons for ticket bundles (2 rows of 3)
   const row1Bundles = TICKET_BUNDLES.slice(0, 3);
-  const row2Bundles = TICKET_BUNDLES.slice(3);
+  const row2Bundles = TICKET_BUNDLES.slice(3, 6);
 
   const row1 = new ActionRowBuilder().addComponents(
     ...row1Bundles.map((bundle) =>
       new ButtonBuilder()
         .setCustomId(`BUY_TICKETS_${bundle.id}`)
-        .setLabel(
-          `${bundle.emoji} ${bundle.tickets} - $${bundle.price.toFixed(2)}`
-        )
+        .setLabel(`🎟️ ${bundle.tickets} — $${bundle.price.toFixed(2)}`)
         .setStyle(bundle.popular ? ButtonStyle.Success : ButtonStyle.Primary)
     )
   );
 
-  const rows = [row1];
-
-  if (row2Bundles.length > 0) {
-    const row2 = new ActionRowBuilder().addComponents(
-      ...row2Bundles.map((bundle) =>
-        new ButtonBuilder()
-          .setCustomId(`BUY_TICKETS_${bundle.id}`)
-          .setLabel(
-            `${bundle.emoji} ${bundle.tickets} - $${bundle.price.toFixed(2)}`
-          )
-          .setStyle(bundle.popular ? ButtonStyle.Success : ButtonStyle.Primary)
-      )
-    );
-    rows.push(row2);
-  }
+  const row2 = new ActionRowBuilder().addComponents(
+    ...row2Bundles.map((bundle) =>
+      new ButtonBuilder()
+        .setCustomId(`BUY_TICKETS_${bundle.id}`)
+        .setLabel(`🎟️ ${bundle.tickets} — $${bundle.price.toFixed(2)}`)
+        .setStyle(bundle.popular ? ButtonStyle.Success : ButtonStyle.Primary)
+    )
+  );
 
   // Add "Convert Winnings to Tickets" button
   const convertRow = new ActionRowBuilder().addComponents(
@@ -48,48 +39,44 @@ function ticketPurchaseButtons() {
       .setLabel("💰 Convert Winnings to Tickets")
       .setStyle(ButtonStyle.Success)
   );
-  rows.push(convertRow);
 
-  return rows;
+  return [row1, row2, convertRow];
 }
 
 function buildEmbed() {
-  let bundleDesc =
-    "**💳 Secure Ticket Purchases**\n" +
-    "Buy tickets to enter skirmish matches and compete for cash prizes!\n\n" +
-    "**Pricing Structure:**\n" +
-    "• Entry fee (stake): $1.00 per ticket → goes to prize pool\n" +
-    "• Platform fee: 35% → 20% (decreases with volume)\n" +
-    "• Total = Entry fee + Platform fee\n\n" +
-    "**📦 Available Bundles:**\n\n";
+  const embed = new EmbedBuilder()
+    .setTitle(PANEL_TITLE)
+    .setDescription(
+      "Purchase tickets to enter Skirmish matches and compete for cash prizes."
+    )
+    .setColor(0x5865f2);
 
+  // Add inline fields for each bundle (3 per row)
   TICKET_BUNDLES.forEach((bundle) => {
-    const popularTag = bundle.popular ? " ⭐ **BEST VALUE**" : "";
-    const feeReduction = bundle.serviceFeePercent < 35
-      ? ` (${35 - bundle.serviceFeePercent}% off fee!)`
-      : "";
+    const popularTag = bundle.popular ? " ⭐" : "";
+    const bestValue = bundle.popular ? "**BEST VALUE**\n" : "";
 
-    bundleDesc += `${bundle.emoji} **${bundle.label}**${popularTag}\n`;
-    bundleDesc += `├ Entry fee (stake): **$${bundle.stake.toFixed(2)}** (${bundle.tickets} tickets @ $1.00)\n`;
-    bundleDesc += `├ Platform fee: **$${bundle.serviceFee.toFixed(2)}** (${bundle.serviceFeePercent}% of stake)${feeReduction}\n`;
-    bundleDesc += `└ **Total cost: $${bundle.price.toFixed(2)}**\n`;
-    bundleDesc += `   *${bundle.description}*\n\n`;
+    // Calculate savings compared to starter pack (35% fee)
+    const baseFeePercent = 35;
+    const savings = baseFeePercent - bundle.serviceFeePercent;
+    const savingsLine = savings > 0 ? `*Save ${savings}% on fees*` : "";
+
+    embed.addFields({
+      name: `${bundle.emoji} ${bundle.label}${popularTag}`,
+      value: `${bestValue}🎟️ ${bundle.tickets} Tickets\n**$${bundle.price.toFixed(2)}**\n${savingsLine}`,
+      inline: true,
+    });
   });
 
-  bundleDesc += "\n**Match Entry Costs:**\n";
-  bundleDesc += "• MM5: 5 tickets ($5.00 stake)\n";
-  bundleDesc += "• MM10: 10 tickets ($10.00 stake)\n";
-  bundleDesc += "• MM20: 20 tickets ($20.00 stake)\n";
-  bundleDesc += "• MM50: 50 tickets ($50.00 stake)\n\n";
-  bundleDesc += "💡 **Larger bundles = Lower platform fees!**\n";
-  bundleDesc += "✅ Powered by Stripe - Fast & Secure";
+  embed.addFields({
+    name: "\u200b",
+    value: "💡 **Bigger bundles = Lower fees** • ✅ Stripe Secured",
+    inline: false,
+  });
 
-  return new EmbedBuilder()
-    .setTitle(PANEL_TITLE)
-    .setDescription(bundleDesc)
-    .setColor(0x5865f2)
-    .setFooter({ text: "Tickets are credited instantly • Stakes go to prize pools" })
-    .setTimestamp(new Date());
+  embed.setFooter({ text: "Tickets credited instantly • Entry fees go to prize pools" });
+
+  return embed;
 }
 
 /**
@@ -105,7 +92,8 @@ async function ensureTicketPurchasePanel(client) {
   const messages = await channel.messages.fetch({ limit: 10 });
   const existing = messages.find(
     (m) =>
-      m.author.id === client.user.id && m.embeds?.[0]?.title === PANEL_TITLE
+      m.author.id === client.user.id &&
+      m.embeds?.[0]?.title?.includes("TICKET")
   );
 
   if (existing) {
