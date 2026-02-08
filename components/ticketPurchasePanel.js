@@ -54,7 +54,6 @@ function buildEmbed() {
   // Add inline fields for each bundle (3 per row)
   TICKET_BUNDLES.forEach((bundle) => {
     const popularTag = bundle.popular ? " ⭐" : "";
-    const bestValue = bundle.popular ? "**BEST VALUE**\n" : "";
 
     // Calculate savings compared to starter pack (35% fee)
     const baseFeePercent = 35;
@@ -63,7 +62,7 @@ function buildEmbed() {
 
     embed.addFields({
       name: `${bundle.emoji} ${bundle.label}${popularTag}`,
-      value: `${bestValue}🎟️ ${bundle.tickets} Tickets\n**$${bundle.price.toFixed(2)}**\n${savingsLine}`,
+      value: `🎟️ ${bundle.tickets} Tickets\n**$${bundle.price.toFixed(2)}**\n${savingsLine}`,
       inline: true,
     });
   });
