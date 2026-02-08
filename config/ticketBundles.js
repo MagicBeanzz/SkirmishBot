@@ -72,13 +72,26 @@ const TICKET_BUNDLES = [
     id: "champion_100",
     tickets: 100,
     stake: 100.0, // $1.00/ticket stake
-    serviceFeePercent: 20, // 20% service fee - BEST VALUE
+    serviceFeePercent: 20, // 20% service fee
     serviceFee: 20.0,
     price: 120.0, // Total: stake + service fee
     priceInCents: 12000,
     label: "Champion Pack",
-    description: "100 tickets - Best value for grinders",
+    description: "100 tickets - For serious grinders",
     emoji: "👑",
+    popular: false,
+  },
+  {
+    id: "legend_200",
+    tickets: 200,
+    stake: 200.0, // $1.00/ticket stake
+    serviceFeePercent: 15, // 15% service fee - BEST VALUE
+    serviceFee: 30.0,
+    price: 230.0, // Total: stake + service fee
+    priceInCents: 23000,
+    label: "Legend Pack",
+    description: "200 tickets - Maximum value",
+    emoji: "🏆",
     popular: false,
   },
 ];
